@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 import * as cdk from 'aws-cdk-lib';
 import { McqAppInfraStack } from '../lib/mcq-app-infra-stack';
+import { Bucket } from 'aws-cdk-lib/aws-s3';
+import { BucketsStack } from '../lib/buckets-stack';
 
 const app = new cdk.App();
 new McqAppInfraStack(app, 'McqAppInfraStack', {
@@ -17,4 +19,8 @@ new McqAppInfraStack(app, 'McqAppInfraStack', {
   // env: { account: '123456789012', region: 'us-east-1' },
 
   /* For more information, see https://docs.aws.amazon.com/cdk/latest/guide/environments.html */
+});
+
+new BucketsStack(app, 'BucketsStack', {
+  env: { account: process.env.CDK_DEFAULT_ACCOUNT, region: process.env.CDK_DEFAULT_REGION },
 });
