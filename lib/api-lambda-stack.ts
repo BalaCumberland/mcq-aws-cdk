@@ -22,7 +22,7 @@ export class ApiLambdaStack extends cdk.Stack {
       props.lambdaSecurityGroup.addEgressRule(
         ec2.Peer.anyIpv4(),
         ec2.Port.tcp(443),
-        'Allow HTTPS traffic to Firebase'
+        
       );
       
       // Database access
@@ -86,8 +86,8 @@ export class ApiLambdaStack extends cdk.Stack {
     // Add API key to usage plan
     usagePlan.addApiKey(apiKey);
 
-    // API routes (Firebase auth handled in Lambda)
-    api.root.addResource('go').addMethod('POST', goIntegration);
+    // API routes at root path - all methods
+    api.root.addMethod('ANY', goIntegration);
 
     // Restrict Lambda access to API Gateway only
     goLambda.addPermission('ApiGatewayInvoke', {
