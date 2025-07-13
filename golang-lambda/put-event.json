@@ -1,0 +1,19 @@
+{
+  "httpMethod": "PUT",
+  "path": "/students/update",
+  "rawPath": "/students/update",
+  "requestContext": {
+    "http": {
+      "method": "PUT",
+      "path": "/students/update"
+    }
+  },
+  "headers": {
+    "Accept": "application/json",
+    "Authorization": "Bearer eyJhbGciOiJSUzI1NiIsImtpZCI6IjQ3YWU0OWM0YzlkM2ViODVhNTI1NDA3MmMzMGQyZThlNzY2MWVmZTEiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL3NlY3VyZXRva2VuLmdvb2dsZS5jb20vZ290aGlua2Vyc3RlY2giLCJhdWQiOiJnb3RoaW5rZXJzdGVjaCIsImF1dGhfdGltZSI6MTc1MjM1ODU1NCwidXNlcl9pZCI6IlBkbVR6dkxROVFVdXVPUllyQmg4a1dEZTFmeDEiLCJzdWIiOiJQZG1UenZMUTlRVXV1T1JZckJoOGtXRGUxZngxIiwiaWF0IjoxNzUyMzU4NTU0LCJleHAiOjE3NTIzNjIxNTQsImVtYWlsIjoicmd2dmFybWEwMDlAZ21haWwuY29tIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsImZpcmViYXNlIjp7ImlkZW50aXRpZXMiOnsiZW1haWwiOlsicmd2dmFybWEwMDlAZ21haWwuY29tIl19LCJzaWduX2luX3Byb3ZpZGVyIjoicGFzc3dvcmQifX0.K2DV-WxouXwkfXX6dxzrZ-lHVKaCWfxMkc9ygbNy8mJ7XQhUhnnzAz74bqDg29DNz7hdNFxlvMYQPtNVDPym_WUuuhl4J0epIaRI7ymWNt9O2pjIcO3VJWoDQt5Ad3LCyXruYeMWeJV6z1jd9Ruhz4r53Ky8P28xetllNlI-7Yv7xT5t2p8ad33zAFT0sUzmnqs1ZwVIS9XySzAtR6BnQBf8-chFAG2ltcv2qT8AQCNNavrOYZUn0Cp5qK1Gkfh7SUIqbeTE7Au_SJIuZFSS4L27DXUfcTNL09tSStOa5P73VGvmaa0wVQeTE8v5xjpcbsIXuqQQ92dA0nrXtie_Jw",
+    "Content-Type": "application/json",
+    "Origin": "https://gradeup.guru"
+  },
+  "body": "{\"email\":\"balamuralipati@gmail.com\",\"updatedBy\":\"rgvvarma009@gmail.com\",\"studentClass\":\"CLS12-BIPC\"}",
+  "isBase64Encoded": false
+}
