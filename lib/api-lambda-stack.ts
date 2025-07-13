@@ -16,7 +16,14 @@ export class ApiLambdaStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: ApiLambdaStackProps) {
     super(scope, id, props);
 
-  
+    // Configure passed Lambda Security Group
+    if (props?.lambdaSecurityGroup) {
+      // HTTPS internet access
+      props.lambdaSecurityGroup.addEgressRule(
+        ec2.Peer.anyIpv4(),
+        ec2.Port.tcp(443),
+        'Allow HTTPS internet access'
+      );
       
       // Database access
       if (props.dbSecurityGroup) {
@@ -35,6 +42,8 @@ export class ApiLambdaStack extends cdk.Stack {
       handler: 'bootstrap',
       architecture: lambda.Architecture.ARM_64,
       code: lambda.Code.fromAsset('golang-lambda'),
+      timeout: cdk.Duration.seconds(30),
+      memorySize: 256,
       vpc: props?.vpc,
       vpcSubnets: props?.vpc ? {
         subnetType: ec2.SubnetType.PUBLIC

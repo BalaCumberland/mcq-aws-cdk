@@ -23,6 +23,14 @@ export class BucketsStack extends cdk.Stack {
       "CLS12-BIPC-EAPCET", "CLS12-BIPC-NEET"
     ];
 
+    // SQL Backup bucket
+    new s3.Bucket(this, 'SqlBackupBucket', {
+      bucketName: 'mcq-sqlbackup-536697228264',
+      versioned: true,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+      autoDeleteObjects: true,
+    });
+
     for (const name of names) {
       const cleanName = name.toLowerCase().replace(/[^a-z0-9]/g, '-');
 

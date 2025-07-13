@@ -80,7 +80,21 @@ export class DatabaseStack extends cdk.Stack {
         assumedBy: new iam.ServicePrincipal('ec2.amazonaws.com'),
         managedPolicies: [
           iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonSSMManagedInstanceCore')
-        ]
+        ],
+        inlinePolicies: {
+          S3Access: new iam.PolicyDocument({
+            statements: [
+              new iam.PolicyStatement({
+                effect: iam.Effect.ALLOW,
+                actions: ['s3:GetObject', 's3:ListBucket'],
+                resources: [
+                  'arn:aws:s3:::mcq-sqlbackup-536697228264',
+                  'arn:aws:s3:::mcq-sqlbackup-536697228264/*'
+                ]
+              })
+            ]
+          })
+        }
       })
     });
 
@@ -92,6 +106,12 @@ export class DatabaseStack extends cdk.Stack {
         generateStringKey: 'password',
         excludeCharacters: ' %+~`#$&*()|[]{}:;<>?!\'/"\\'
       }
+    });
+
+    // Firebase service account secret
+    new secretsmanager.Secret(this, 'FirebaseSecret', {
+      secretName: 'mcq-app/firebase-service-account',
+      description: 'Firebase service account credentials for MCQ app'
     });
 
     // PostgreSQL Database (Free Tier)
