@@ -30,35 +30,55 @@ import (
 var firebaseAuth *auth.Client
 
 func getFirebaseCredentials() ([]byte, error) {
+	log.Printf("🔑 Creating AWS session...")
 	sess := session.Must(session.NewSession())
+	log.Printf("✅ AWS session created")
+	
+	log.Printf("📡 Creating Secrets Manager client...")
 	svc := secretsmanager.New(sess)
+	log.Printf("✅ Secrets Manager client created")
 
+	log.Printf("📜 Retrieving Firebase secret...")
 	result, err := svc.GetSecretValue(&secretsmanager.GetSecretValueInput{
 		SecretId: aws.String("mcq-app/firebase-service-account"),
 	})
 	if err != nil {
+		log.Printf("❌ Failed to get Firebase secret: %v", err)
 		return nil, err
 	}
+	log.Printf("✅ Firebase secret retrieved successfully")
 
 	return []byte(*result.SecretString), nil
 }
 
 func initFirebase() error {
+	log.Printf("🔥 Starting Firebase initialization...")
 	ctx := context.Background()
+	
+	log.Printf("📡 Getting Firebase credentials from Secrets Manager...")
 	credsJSON, err := getFirebaseCredentials()
 	if err != nil {
+		log.Printf("❌ Failed to get Firebase credentials: %v", err)
 		return fmt.Errorf("failed to get Firebase credentials: %v", err)
 	}
+	log.Printf("✅ Firebase credentials retrieved")
 
+	log.Printf("🚀 Creating Firebase app...")
 	conf := &firebase.Config{}
 	app, err := firebase.NewApp(ctx, conf, option.WithCredentialsJSON(credsJSON))
 	if err != nil {
+		log.Printf("❌ Error initializing firebase app: %v", err)
 		return fmt.Errorf("error initializing firebase app: %v", err)
 	}
+	log.Printf("✅ Firebase app created")
+	
+	log.Printf("🔐 Initializing Firebase auth client...")
 	firebaseAuth, err = app.Auth(ctx)
 	if err != nil {
+		log.Printf("❌ Error initializing firebase auth client: %v", err)
 		return fmt.Errorf("error initializing firebase auth client: %v", err)
 	}
+	log.Printf("✅ Firebase auth client initialized")
 	return nil
 }
 

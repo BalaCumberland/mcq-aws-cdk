@@ -10,6 +10,7 @@ export class DatabaseStack extends cdk.Stack {
   public readonly dbSecurityGroup: ec2.SecurityGroup;
   public readonly lambdaSecurityGroup: ec2.SecurityGroup;
   public readonly dbSecret: secretsmanager.Secret;
+  public readonly firebaseSecret: secretsmanager.Secret;
 
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
@@ -109,7 +110,7 @@ export class DatabaseStack extends cdk.Stack {
     });
 
     // Firebase service account secret
-    new secretsmanager.Secret(this, 'FirebaseSecret', {
+    this.firebaseSecret = new secretsmanager.Secret(this, 'FirebaseSecret', {
       secretName: 'mcq-app/firebase-service-account',
       description: 'Firebase service account credentials for MCQ app'
     });
@@ -132,6 +133,15 @@ export class DatabaseStack extends cdk.Stack {
       vpcSubnets: {
         subnetType: ec2.SubnetType.PRIVATE_ISOLATED
       }
+    });
+
+    // VPC Interface Endpoint for Secrets Manager (needed for Lambda in VPC)
+    this.vpc.addInterfaceEndpoint('SecretsManagerEndpoint', {
+      service: ec2.InterfaceVpcEndpointAwsService.SECRETS_MANAGER,
+      subnets: {
+        subnetType: ec2.SubnetType.PUBLIC
+      },
+      securityGroups: [this.lambdaSecurityGroup]
     });
 
     // Outputs

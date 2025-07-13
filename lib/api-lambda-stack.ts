@@ -10,6 +10,7 @@ interface ApiLambdaStackProps extends cdk.StackProps {
   dbSecurityGroup?: ec2.SecurityGroup;
   lambdaSecurityGroup?: ec2.SecurityGroup;
   dbSecretArn?: string;
+  firebaseSecretArn?: string;
 }
 
 export class ApiLambdaStack extends cdk.Stack {
@@ -44,12 +45,7 @@ export class ApiLambdaStack extends cdk.Stack {
       code: lambda.Code.fromAsset('golang-lambda'),
       timeout: cdk.Duration.seconds(30),
       memorySize: 256,
-      vpc: props?.vpc,
-      vpcSubnets: props?.vpc ? {
-        subnetType: ec2.SubnetType.PUBLIC
-      } : undefined,
-      allowPublicSubnet: true,
-      securityGroups: props?.lambdaSecurityGroup ? [props.lambdaSecurityGroup] : undefined,
+
       environment: {
         DB_SECRET_ARN: props?.dbSecretArn || ''
       }
@@ -98,12 +94,15 @@ export class ApiLambdaStack extends cdk.Stack {
       sourceArn: api.arnForExecuteApi()
     });
 
-    // Grant Lambda permission to read the database secret
-    if (props?.dbSecretArn) {
+    // Grant Lambda permission to read secrets
+    if (props?.dbSecretArn && props?.firebaseSecretArn) {
       goLambda.addToRolePolicy(new iam.PolicyStatement({
         effect: iam.Effect.ALLOW,
         actions: ['secretsmanager:GetSecretValue'],
-        resources: [props.dbSecretArn]
+        resources: [
+          props.dbSecretArn,
+          props.firebaseSecretArn
+        ]
       }));
     }
 
