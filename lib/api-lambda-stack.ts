@@ -43,11 +43,12 @@ export class ApiLambdaStack extends cdk.Stack {
       handler: 'bootstrap',
       architecture: lambda.Architecture.ARM_64,
       code: lambda.Code.fromAsset('golang-lambda'),
-      timeout: cdk.Duration.seconds(30),
-      memorySize: 256,
+      timeout: cdk.Duration.seconds(60),
+      memorySize: 512,
 
       environment: {
-        DB_SECRET_ARN: props?.dbSecretArn || ''
+        DB_SECRET_ARN: props?.dbSecretArn || '',
+        FIREBASE_SECRET_ARN: props?.firebaseSecretArn || ''
       }
     });
 
@@ -95,13 +96,13 @@ export class ApiLambdaStack extends cdk.Stack {
     });
 
     // Grant Lambda permission to read secrets
-    if (props?.dbSecretArn && props?.firebaseSecretArn) {
+    if (props?.dbSecretArn) {
       goLambda.addToRolePolicy(new iam.PolicyStatement({
         effect: iam.Effect.ALLOW,
         actions: ['secretsmanager:GetSecretValue'],
         resources: [
           props.dbSecretArn,
-          props.firebaseSecretArn
+          'arn:aws:secretsmanager:us-east-1:536697228264:secret:mcq-app/firebase-service-account-*'
         ]
       }));
     }
