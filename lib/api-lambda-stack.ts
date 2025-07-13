@@ -64,30 +64,18 @@ export class ApiLambdaStack extends cdk.Stack {
     // API Gateway integrations
     const goIntegration = new apigateway.LambdaIntegration(goLambda);
 
-    // API Key for usage plan
-    const apiKey = api.addApiKey('McqApiKey', {
-      apiKeyName: 'mcq-api-key'
-    });
-
-    // Create a usage plan with throttling limits
-    const usagePlan = api.addUsagePlan('McqUsagePlan', {
-      name: 'McqUsagePlan',
-      throttle: {
-        rateLimit: 10,    // requests per second
-        burstLimit: 20    // max concurrent requests
-      }
-    });
-
-    // Associate usage plan with API stage
-    usagePlan.addApiStage({
-      stage: api.deploymentStage
-    });
-
-    // Add API key to usage plan
-    usagePlan.addApiKey(apiKey);
+    // No API key or usage plan - open access with Firebase auth only
 
     // API routes at root path - all methods
-    api.root.addMethod('ANY', goIntegration);
+    api.root.addMethod('ANY', goIntegration, {
+      apiKeyRequired: false
+    });
+
+    // Add proxy resource to handle all sub-paths
+    const proxyResource = api.root.addProxy({
+      defaultIntegration: goIntegration,
+      anyMethod: true
+    });
 
     // Restrict Lambda access to API Gateway only
     goLambda.addPermission('ApiGatewayInvoke', {
