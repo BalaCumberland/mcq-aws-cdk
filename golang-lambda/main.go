@@ -82,7 +82,7 @@ func initFirebase() error {
 	return nil
 }
 
-func verifyFirebaseToken(request events.LambdaFunctionURLRequest) (*auth.Token, error) {
+func verifyFirebaseToken(request events.APIGatewayProxyRequest) (*auth.Token, error) {
 	log.Printf("🔐 Starting token verification...")
 	// Look for Authorization header (case-insensitive)
 	authHeader, ok := request.Headers["Authorization"]
@@ -199,15 +199,15 @@ func getCORSHeaders() map[string]string {
 	}
 }
 
-// ✅ AWS Lambda Handler for Function URLs
-func lambdaHandler(request events.LambdaFunctionURLRequest) (events.LambdaFunctionURLResponse, error) {
+// ✅ AWS Lambda Handler for API Gateway
+func lambdaHandler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	log.Printf("🚀 Lambda function started")
-	log.Printf("📌 Received request: Path = %s, Method = %s", request.RawPath, request.RequestContext.HTTP.Method)
+	log.Printf("📌 Received request: Path = %s, Method = %s", request.Path, request.HTTPMethod)
 
 	// ✅ Handle CORS Preflight
-	if request.RequestContext.HTTP.Method == "OPTIONS" {
-		return events.LambdaFunctionURLResponse{
+	if request.HTTPMethod == "OPTIONS" {
+		return events.APIGatewayProxyResponse{
 			StatusCode: 200,
 			Headers:    getCORSHeaders(),
 			Body:       `{"message":"CORS preflight response"}`,
@@ -215,11 +215,11 @@ func lambdaHandler(request events.LambdaFunctionURLRequest) (events.LambdaFuncti
 	}
 
 	// ✅ Skip token verification for student update (handled in specific handler)
-	if request.RawPath != "/students/update" {
+	if request.Path != "/students/update" {
 		_, err := verifyFirebaseToken(request)
 		if err != nil {
 			log.Printf("❌ Authorization error: %v", err)
-			return events.LambdaFunctionURLResponse{
+			return events.APIGatewayProxyResponse{
 				StatusCode: 401,
 				Headers:    getCORSHeaders(),
 				Body:       fmt.Sprintf(`{"error": "Unauthorized", "message": "%s"}`, err.Error()),
@@ -228,17 +228,17 @@ func lambdaHandler(request events.LambdaFunctionURLRequest) (events.LambdaFuncti
 	}
 
 	// ✅ Route API Requests
-	switch request.RawPath {
+	switch request.Path {
 	case "/upload/questions":
 		return handleQuizUpload(request)
 	case "/students/update":
 		return handleStudentUpdate(request)
 	default:
-		log.Printf("❌ Invalid API Path: %s", request.RawPath)
-		return events.LambdaFunctionURLResponse{
+		log.Printf("❌ Invalid API Path: %s", request.Path)
+		return events.APIGatewayProxyResponse{
 			StatusCode: 404,
 			Headers:    getCORSHeaders(),
-			Body:       fmt.Sprintf(`{"error":"Invalid API endpoint", "receivedPath": "%s"}`, request.RawPath),
+			Body:       fmt.Sprintf(`{"error":"Invalid API endpoint", "receivedPath": "%s"}`, request.Path),
 		}, nil
 	}
 }
@@ -257,7 +257,7 @@ func getUserRole(db *sql.DB, email string) (string, error) {
 }
 
 // ✅ Handle Student Update
-func handleStudentUpdate(request events.LambdaFunctionURLRequest) (events.LambdaFunctionURLResponse, error) {
+func handleStudentUpdate(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	// ✅ Verify Firebase Token and Extract Email
 	token, err := verifyFirebaseToken(request)
 	if err != nil {
@@ -451,7 +451,7 @@ func updateStudent(db *sql.DB, student StudentUpdateRequest) (int64, error) {
 }
 
 // ✅ Handle Quiz Upload
-func handleQuizUpload(request events.LambdaFunctionURLRequest) (events.LambdaFunctionURLResponse, error) {
+func handleQuizUpload(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	queryParams := request.QueryStringParameters
 	category := queryParams["category"]
 	durationStr := queryParams["duration"]
@@ -537,8 +537,8 @@ func getCellValue(row []string, headerMap map[string]int, key string) string {
 }
 
 // ✅ Utility: Create Success Response
-func createSuccessResponse(message string) events.LambdaFunctionURLResponse {
-	return events.LambdaFunctionURLResponse{
+func createSuccessResponse(message string) events.APIGatewayProxyResponse {
+	return events.APIGatewayProxyResponse{
 		StatusCode: 200,
 		Headers:    getCORSHeaders(),
 		Body:       fmt.Sprintf(`{"message":"%s"}`, message),
@@ -546,8 +546,8 @@ func createSuccessResponse(message string) events.LambdaFunctionURLResponse {
 }
 
 // ✅ Utility: Create Error Response
-func createErrorResponse(statusCode int, errorMessage string) events.LambdaFunctionURLResponse {
-	return events.LambdaFunctionURLResponse{
+func createErrorResponse(statusCode int, errorMessage string) events.APIGatewayProxyResponse {
+	return events.APIGatewayProxyResponse{
 		StatusCode: statusCode,
 		Headers:    getCORSHeaders(),
 		Body:       fmt.Sprintf(`{"error":"%s"}`, errorMessage),
