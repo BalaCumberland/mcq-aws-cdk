@@ -18,11 +18,11 @@ export class ApiLambdaStack extends cdk.Stack {
 
     // Configure passed Lambda Security Group
     if (props?.lambdaSecurityGroup) {
-      // Firebase access
+      // HTTPS internet access
       props.lambdaSecurityGroup.addEgressRule(
         ec2.Peer.anyIpv4(),
         ec2.Port.tcp(443),
-        
+        'Allow HTTPS internet access'
       );
       
       // Database access
@@ -46,6 +46,7 @@ export class ApiLambdaStack extends cdk.Stack {
       vpcSubnets: props?.vpc ? {
         subnetType: ec2.SubnetType.PUBLIC
       } : undefined,
+      allowPublicSubnet: true,
       securityGroups: props?.lambdaSecurityGroup ? [props.lambdaSecurityGroup] : undefined,
       environment: {
         DB_SECRET_ARN: props?.dbSecretArn || ''
