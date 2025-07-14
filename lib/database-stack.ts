@@ -136,11 +136,11 @@ export class DatabaseStack extends cdk.Stack {
       }
     });
 
-    // VPC Interface Endpoint for Secrets Manager
+    // VPC Interface Endpoint for Secrets Manager in private subnets
     this.vpc.addInterfaceEndpoint('SecretsManagerEndpoint', {
       service: ec2.InterfaceVpcEndpointAwsService.SECRETS_MANAGER,
       subnets: {
-        subnetType: ec2.SubnetType.PUBLIC
+        subnetType: ec2.SubnetType.PRIVATE_ISOLATED
       },
       securityGroups: [this.lambdaSecurityGroup]
     });

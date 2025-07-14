@@ -18,22 +18,13 @@ export class ApiLambdaStack extends cdk.Stack {
     super(scope, id, props);
 
     // Configure passed Lambda Security Group
-    if (props?.lambdaSecurityGroup) {
-      // HTTPS internet access
+    if (props?.lambdaSecurityGroup && props.dbSecurityGroup) {
+      // Database access only
       props.lambdaSecurityGroup.addEgressRule(
-        ec2.Peer.anyIpv4(),
-        ec2.Port.tcp(443),
-        'Allow HTTPS internet access'
+        ec2.Peer.securityGroupId(props.dbSecurityGroup.securityGroupId),
+        ec2.Port.tcp(5432),
+        'Allow PostgreSQL access'
       );
-      
-      // Database access
-      if (props.dbSecurityGroup) {
-        props.lambdaSecurityGroup.addEgressRule(
-          ec2.Peer.securityGroupId(props.dbSecurityGroup.securityGroupId),
-          ec2.Port.tcp(5432),
-          'Allow PostgreSQL access'
-        );
-      }
     }
 
     // Firebase Authorizer Lambda (outside VPC)
@@ -61,9 +52,11 @@ export class ApiLambdaStack extends cdk.Stack {
       memorySize: 512,
       vpc: props?.vpc,
       vpcSubnets: {
-        subnetType: ec2.SubnetType.PUBLIC
+        subnets: [
+          ec2.Subnet.fromSubnetId(this, 'PrivateSubnet1', 'subnet-08a50ae7e49889508'),
+          ec2.Subnet.fromSubnetId(this, 'PrivateSubnet2', 'subnet-0fc698411d47497d8')
+        ]
       },
-      allowPublicSubnet: true,
       securityGroups: props?.lambdaSecurityGroup ? [props.lambdaSecurityGroup] : undefined,
       environment: {
         DB_SECRET_ARN: props?.dbSecretArn || ''
