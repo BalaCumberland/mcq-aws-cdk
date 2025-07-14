@@ -14,10 +14,12 @@ export class DatabaseStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
-    // VPC
+    // VPC with explicit internet gateway
     this.vpc = new ec2.Vpc(this, 'McqVpc', {
       maxAzs: 2,
       natGateways: 0,
+      enableDnsHostnames: true,
+      enableDnsSupport: true,
       ipAddresses: ec2.IpAddresses.cidr('10.1.0.0/16'),
       subnetConfiguration: [
         {

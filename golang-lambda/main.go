@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"context"
 	"database/sql"
 	"encoding/base64"
 	"encoding/json"
@@ -13,10 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"google.golang.org/api/option"
 
-	firebase "firebase.google.com/go"
-	"firebase.google.com/go/auth"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
@@ -27,90 +23,18 @@ import (
 	"github.com/xuri/excelize/v2"
 )
 
-var firebaseAuth *auth.Client
 
-func getFirebaseCredentials() ([]byte, error) {
-	log.Printf("🔑 Creating AWS session...")
-	sess := session.Must(session.NewSession())
-	log.Printf("✅ AWS session created")
-	
-	log.Printf("📡 Creating Secrets Manager client...")
-	svc := secretsmanager.New(sess)
-	log.Printf("✅ Secrets Manager client created")
 
-	log.Printf("📜 Retrieving Firebase secret...")
-	result, err := svc.GetSecretValue(&secretsmanager.GetSecretValueInput{
-		SecretId: aws.String("mcq-app/firebase-service-account"),
-	})
-	if err != nil {
-		log.Printf("❌ Failed to get Firebase secret: %v", err)
-		return nil, err
+func getUserFromContext(request events.APIGatewayProxyRequest) (string, error) {
+	// Get user email from authorizer context
+	if request.RequestContext.Authorizer == nil {
+		return "", fmt.Errorf("no authorizer context")
 	}
-	log.Printf("✅ Firebase secret retrieved successfully")
-
-	return []byte(*result.SecretString), nil
-}
-
-func initFirebase() error {
-	log.Printf("🔥 Starting Firebase initialization...")
-	ctx := context.Background()
-	
-	log.Printf("📡 Getting Firebase credentials from Secrets Manager...")
-	credsJSON, err := getFirebaseCredentials()
-	if err != nil {
-		log.Printf("❌ Failed to get Firebase credentials: %v", err)
-		return fmt.Errorf("failed to get Firebase credentials: %v", err)
+	email, ok := request.RequestContext.Authorizer["email"].(string)
+	if !ok || email == "" {
+		return "", fmt.Errorf("missing user email from authorizer")
 	}
-	log.Printf("✅ Firebase credentials retrieved")
-
-	log.Printf("🚀 Creating Firebase app...")
-	conf := &firebase.Config{}
-	app, err := firebase.NewApp(ctx, conf, option.WithCredentialsJSON(credsJSON))
-	if err != nil {
-		log.Printf("❌ Error initializing firebase app: %v", err)
-		return fmt.Errorf("error initializing firebase app: %v", err)
-	}
-	log.Printf("✅ Firebase app created")
-	
-	log.Printf("🔐 Initializing Firebase auth client...")
-	firebaseAuth, err = app.Auth(ctx)
-	if err != nil {
-		log.Printf("❌ Error initializing firebase auth client: %v", err)
-		return fmt.Errorf("error initializing firebase auth client: %v", err)
-	}
-	log.Printf("✅ Firebase auth client initialized")
-	return nil
-}
-
-func verifyFirebaseToken(request events.APIGatewayProxyRequest) (*auth.Token, error) {
-	log.Printf("🔐 Starting token verification...")
-	// Look for Authorization header (case-insensitive)
-	authHeader, ok := request.Headers["Authorization"]
-	if !ok {
-		authHeader, ok = request.Headers["authorization"]
-	}
-	if !ok || authHeader == "" {
-		log.Printf("❌ Missing Authorization header")
-		return nil, fmt.Errorf("missing Authorization header")
-	}
-
-	if !strings.HasPrefix(authHeader, "Bearer ") {
-		log.Printf("❌ Invalid Authorization header format")
-		return nil, fmt.Errorf("invalid Authorization header format")
-	}
-	idToken := strings.TrimPrefix(authHeader, "Bearer ")
-
-	// Verify the token using the Firebase Admin SDK with timeout
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	log.Printf("📡 Verifying Firebase token...")
-	token, err := firebaseAuth.VerifyIDToken(ctx, idToken)
-	if err != nil {
-		log.Printf("❌ Token verification failed: %v", err)
-		return nil, fmt.Errorf("failed to verify token: %v", err)
-	}
-	log.Printf("✅ Token verified successfully")
-	return token, nil
+	return email, nil
 }
 
 type DBConfig struct {
@@ -214,18 +138,7 @@ func lambdaHandler(request events.APIGatewayProxyRequest) (events.APIGatewayProx
 		}, nil
 	}
 
-	// ✅ Skip token verification for student update (handled in specific handler)
-	if request.Path != "/students/update" {
-		_, err := verifyFirebaseToken(request)
-		if err != nil {
-			log.Printf("❌ Authorization error: %v", err)
-			return events.APIGatewayProxyResponse{
-				StatusCode: 401,
-				Headers:    getCORSHeaders(),
-				Body:       fmt.Sprintf(`{"error": "Unauthorized", "message": "%s"}`, err.Error()),
-			}, nil
-		}
-	}
+	// User already authorized by API Gateway authorizer
 
 	// ✅ Route API Requests
 	switch request.Path {
@@ -258,14 +171,12 @@ func getUserRole(db *sql.DB, email string) (string, error) {
 
 // ✅ Handle Student Update
 func handleStudentUpdate(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	// ✅ Verify Firebase Token and Extract Email
-	token, err := verifyFirebaseToken(request)
+	// Get authenticated user from authorizer context
+	userEmail, err := getUserFromContext(request)
 	if err != nil {
-		log.Printf("❌ Token verification failed: %v", err)
+		log.Printf("❌ Failed to get user from context: %v", err)
 		return createErrorResponse(401, "Unauthorized"), nil
 	}
-
-	userEmail := token.Claims["email"].(string)
 	log.Printf("🔐 Authenticated user: %s", userEmail)
 
 	var studentUpdate StudentUpdateRequest
@@ -580,8 +491,5 @@ func saveToPostgres(quiz QuizData) error {
 
 // ✅ Main Function
 func main() {
-	if err := initFirebase(); err != nil {
-		log.Fatalf("Failed to initialize Firebase: %v", err)
-	}
 	lambda.Start(lambdaHandler)
 }

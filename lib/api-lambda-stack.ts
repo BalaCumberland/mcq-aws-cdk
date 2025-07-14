@@ -36,19 +36,37 @@ export class ApiLambdaStack extends cdk.Stack {
       }
     }
 
-    // Golang Lambda Function in public subnet
+    // Firebase Authorizer Lambda (outside VPC)
+    const authorizerLambda = new lambda.Function(this, 'FirebaseAuthorizer', {
+      functionName: 'firebase-authorizer',
+      runtime: lambda.Runtime.PROVIDED_AL2023,
+      handler: 'bootstrap',
+      architecture: lambda.Architecture.ARM_64,
+      code: lambda.Code.fromAsset('authorizer-lambda'),
+      timeout: cdk.Duration.seconds(30),
+      memorySize: 256,
+      environment: {
+        FIREBASE_SECRET_ARN: props?.firebaseSecretArn || ''
+      }
+    });
+
+    // Main Lambda Function in VPC public subnet
     const goLambda = new lambda.Function(this, 'GolangUploadApi', {
       functionName: 'golang-upload-api',
       runtime: lambda.Runtime.PROVIDED_AL2023,
       handler: 'bootstrap',
       architecture: lambda.Architecture.ARM_64,
       code: lambda.Code.fromAsset('golang-lambda'),
-      timeout: cdk.Duration.seconds(60),
+      timeout: cdk.Duration.seconds(300),
       memorySize: 512,
-
+      vpc: props?.vpc,
+      vpcSubnets: {
+        subnetType: ec2.SubnetType.PUBLIC
+      },
+      allowPublicSubnet: true,
+      securityGroups: props?.lambdaSecurityGroup ? [props.lambdaSecurityGroup] : undefined,
       environment: {
-        DB_SECRET_ARN: props?.dbSecretArn || '',
-        FIREBASE_SECRET_ARN: props?.firebaseSecretArn || ''
+        DB_SECRET_ARN: props?.dbSecretArn || ''
       }
     });
 
@@ -61,20 +79,30 @@ export class ApiLambdaStack extends cdk.Stack {
       }
     });
 
+    // API Gateway authorizer
+    const authorizer = new apigateway.TokenAuthorizer(this, 'ApiAuthorizer', {
+      handler: authorizerLambda,
+      identitySource: 'method.request.header.Authorization'
+    });
+
     // API Gateway integrations
     const goIntegration = new apigateway.LambdaIntegration(goLambda);
 
-    // No API key or usage plan - open access with Firebase auth only
-
-    // API routes at root path - all methods
-    api.root.addMethod('ANY', goIntegration, {
+    // Register endpoint without authorization
+    const registerResource = api.root.addResource('register');
+    registerResource.addMethod('POST', goIntegration, {
       apiKeyRequired: false
     });
 
-    // Add proxy resource to handle all sub-paths
+    // All other routes with Firebase authorization
     const proxyResource = api.root.addProxy({
       defaultIntegration: goIntegration,
-      anyMethod: true
+      anyMethod: false
+    });
+    
+    proxyResource.addMethod('ANY', goIntegration, {
+      authorizer: authorizer,
+      apiKeyRequired: false
     });
 
     // Restrict Lambda access to API Gateway only
@@ -83,14 +111,22 @@ export class ApiLambdaStack extends cdk.Stack {
       sourceArn: api.arnForExecuteApi()
     });
 
-    // Grant Lambda permission to read secrets
+    // Grant authorizer Lambda permission to read Firebase secrets
+    authorizerLambda.addToRolePolicy(new iam.PolicyStatement({
+      effect: iam.Effect.ALLOW,
+      actions: ['secretsmanager:GetSecretValue'],
+      resources: [
+        'arn:aws:secretsmanager:us-east-1:536697228264:secret:mcq-app/firebase-service-account-*'
+      ]
+    }));
+
+    // Grant main Lambda permission to read DB secrets
     if (props?.dbSecretArn) {
       goLambda.addToRolePolicy(new iam.PolicyStatement({
         effect: iam.Effect.ALLOW,
         actions: ['secretsmanager:GetSecretValue'],
         resources: [
-          props.dbSecretArn,
-          'arn:aws:secretsmanager:us-east-1:536697228264:secret:mcq-app/firebase-service-account-*'
+          props.dbSecretArn
         ]
       }));
     }

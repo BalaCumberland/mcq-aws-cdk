@@ -5,12 +5,10 @@ go 1.23.0
 toolchain go1.23.6
 
 require (
-	firebase.google.com/go v3.13.0+incompatible
 	github.com/aws/aws-lambda-go v1.47.0
 	github.com/aws/aws-sdk-go v1.55.5
 	github.com/lib/pq v1.10.9
 	github.com/xuri/excelize/v2 v2.8.0
-	google.golang.org/api v0.235.0
 )
 
 require (
