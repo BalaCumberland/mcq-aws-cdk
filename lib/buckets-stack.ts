@@ -3,6 +3,8 @@ import { Construct } from 'constructs';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 
 export class BucketsStack extends cdk.Stack {
+  public readonly sqlBackupBucket: s3.Bucket;
+
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
@@ -24,7 +26,7 @@ export class BucketsStack extends cdk.Stack {
     ];
 
     // SQL Backup bucket
-    new s3.Bucket(this, 'SqlBackupBucket', {
+    this.sqlBackupBucket = new s3.Bucket(this, 'SqlBackupBucket', {
       bucketName: 'mcq-sqlbackup-536697228264',
       versioned: true,
       removalPolicy: cdk.RemovalPolicy.DESTROY,

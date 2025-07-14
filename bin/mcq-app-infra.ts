@@ -6,12 +6,13 @@ import { DatabaseStack } from '../lib/database-stack';
 
 const app = new cdk.App();
 
-new BucketsStack(app, 'BucketsStack', {
+const bucketsStack = new BucketsStack(app, 'BucketsStack', {
   env: { account: process.env.CDK_DEFAULT_ACCOUNT, region: 'us-east-1' },
 });
 
 const dbStack = new DatabaseStack(app, 'DatabaseStack', {
   env: { account: process.env.CDK_DEFAULT_ACCOUNT, region: 'us-east-1' },
+  sqlBackupBucket: bucketsStack.sqlBackupBucket
 });
 
 new ApiLambdaStack(app, 'ApiLambdaStack', {
@@ -19,5 +20,6 @@ new ApiLambdaStack(app, 'ApiLambdaStack', {
   vpc: dbStack.vpc,
   lambdaSecurityGroup: dbStack.lambdaSecurityGroup,
   dbSecurityGroup: dbStack.dbSecurityGroup,
-  dbSecretArn: dbStack.dbSecret.secretArn
+  dbSecretArn: dbStack.dbSecret.secretArn,
+  sqlBackupBucket: bucketsStack.sqlBackupBucket
 });

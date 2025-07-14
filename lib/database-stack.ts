@@ -3,7 +3,12 @@ import * as rds from 'aws-cdk-lib/aws-rds';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
+import * as s3 from 'aws-cdk-lib/aws-s3';
 import { Construct } from 'constructs';
+
+interface DatabaseStackProps extends cdk.StackProps {
+  sqlBackupBucket?: s3.Bucket;
+}
 
 export class DatabaseStack extends cdk.Stack {
   public readonly vpc: ec2.Vpc;
@@ -11,7 +16,7 @@ export class DatabaseStack extends cdk.Stack {
   public readonly lambdaSecurityGroup: ec2.SecurityGroup;
   public readonly dbSecret: secretsmanager.Secret;
 
-  constructor(scope: Construct, id: string, props?: cdk.StackProps) {
+  constructor(scope: Construct, id: string, props?: DatabaseStackProps) {
     super(scope, id, props);
 
     // VPC with explicit internet gateway
@@ -90,8 +95,8 @@ export class DatabaseStack extends cdk.Stack {
                 effect: iam.Effect.ALLOW,
                 actions: ['s3:GetObject', 's3:ListBucket'],
                 resources: [
-                  'arn:aws:s3:::mcq-sqlbackup-536697228264',
-                  'arn:aws:s3:::mcq-sqlbackup-536697228264/*'
+                  props?.sqlBackupBucket?.bucketArn || '',
+                  `${props?.sqlBackupBucket?.bucketArn || ''}/*`
                 ]
               })
             ]
