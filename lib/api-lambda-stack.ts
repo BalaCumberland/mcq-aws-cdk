@@ -30,15 +30,15 @@ export class ApiLambdaStack extends cdk.Stack {
     // Firebase Authorizer Lambda (outside VPC)
     const authorizerLambda = new lambda.Function(this, 'FirebaseAuthorizer', {
       functionName: 'firebase-authorizer',
-      runtime: lambda.Runtime.PROVIDED_AL2023,
-      handler: 'bootstrap',
+      runtime: lambda.Runtime.NODEJS_20_X,
+      handler: 'index.handler',
       architecture: lambda.Architecture.ARM_64,
       code: lambda.Code.fromAsset('authorizer-lambda'),
       timeout: cdk.Duration.seconds(30),
       memorySize: 256,
       tracing: lambda.Tracing.ACTIVE,
       environment: {
-        FIREBASE_PROJECT_ID: '',
+        FIREBASE_PROJECT_ID: 'gothinkersteach',
         FIREBASE_PRIVATE_KEY: '',
         FIREBASE_CLIENT_EMAIL: ''
       }
