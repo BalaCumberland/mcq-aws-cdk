@@ -38,6 +38,7 @@ export class ApiLambdaStack extends cdk.Stack {
       code: lambda.Code.fromAsset('authorizer-lambda'),
       timeout: cdk.Duration.seconds(30),
       memorySize: 256,
+      tracing: lambda.Tracing.ACTIVE,
       environment: {
         FIREBASE_SECRET_ARN: props?.firebaseSecretArn || ''
       }
@@ -52,6 +53,7 @@ export class ApiLambdaStack extends cdk.Stack {
       code: lambda.Code.fromAsset('golang-lambda'),
       timeout: cdk.Duration.seconds(300),
       memorySize: 512,
+      tracing: lambda.Tracing.ACTIVE,
       vpc: props?.vpc,
       vpcSubnets: {
         subnets: [
@@ -65,12 +67,31 @@ export class ApiLambdaStack extends cdk.Stack {
       }
     });
 
+    // CloudWatch role for API Gateway logging
+    const apiGatewayCloudWatchRole = new iam.Role(this, 'ApiGatewayCloudWatchRole', {
+      assumedBy: new iam.ServicePrincipal('apigateway.amazonaws.com'),
+      managedPolicies: [
+        iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AmazonAPIGatewayPushToCloudWatchLogs')
+      ]
+    });
+
+    // Set CloudWatch role for API Gateway account
+    new apigateway.CfnAccount(this, 'ApiGatewayAccount', {
+      cloudWatchRoleArn: apiGatewayCloudWatchRole.roleArn
+    });
+
     // API Gateway with CORS
     const api = new apigateway.RestApi(this, 'McqApi', {
       defaultCorsPreflightOptions: {
         allowOrigins: apigateway.Cors.ALL_ORIGINS,
         allowMethods: apigateway.Cors.ALL_METHODS,
         allowHeaders: ['Content-Type', 'Authorization']
+      },
+      deployOptions: {
+        loggingLevel: apigateway.MethodLoggingLevel.INFO,
+        dataTraceEnabled: true,
+        metricsEnabled: true,
+        tracingEnabled: true
       }
     });
 

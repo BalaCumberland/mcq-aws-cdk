@@ -4,7 +4,8 @@ import (
 	"fmt"
 	"log"
 
-	"./handlers"
+	"go-upload-excel/handlers"
+
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
 )
@@ -13,6 +14,7 @@ func lambdaHandler(request events.APIGatewayProxyRequest) (events.APIGatewayProx
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	log.Printf("🚀 Lambda function started")
 	log.Printf("📌 Received request: Path = %s, Method = %s", request.Path, request.HTTPMethod)
+	log.Printf("Path: %s, Resource: %s, Stage: %s", request.Path, request.Resource, request.RequestContext.Stage)
 
 	if request.HTTPMethod == "OPTIONS" {
 		return events.APIGatewayProxyResponse{
@@ -22,7 +24,7 @@ func lambdaHandler(request events.APIGatewayProxyRequest) (events.APIGatewayProx
 		}, nil
 	}
 
-	switch request.Path {
+	switch request.Resource {
 	case "/upload/questions":
 		return handlers.HandleQuizUpload(request)
 	case "/students/update":
@@ -31,6 +33,10 @@ func lambdaHandler(request events.APIGatewayProxyRequest) (events.APIGatewayProx
 		return handlers.HandleStudentRegister(request)
 	case "/students/get-by-email":
 		return handlers.HandleStudentGetByEmail(request)
+	case "/quiz/unattempted-quizzes":
+		return handlers.HandleUnattemptedQuizzes(request)
+	case "/quiz/get-by-name":
+		return handlers.HandleQuizGetByName(request)
 	default:
 		log.Printf("❌ Invalid API Path: %s", request.Path)
 		return events.APIGatewayProxyResponse{
@@ -41,8 +47,7 @@ func lambdaHandler(request events.APIGatewayProxyRequest) (events.APIGatewayProx
 	}
 }
 
-
-
 func main() {
+	log.Printf("🚀 Starting Lambda function...")
 	lambda.Start(lambdaHandler)
 }
