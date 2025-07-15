@@ -6,3 +6,26 @@ node_modules
 # CDK asset staging directory
 .cdk.staging
 cdk.out
+
+# Lambda build artifacts
+golang-lambda/bootstrap
+golang-lambda/main
+golang-lambda/go-upload-excel
+golang-lambda/function.zip
+golang-lambda/put-event.json
+
+authorizer-lambda/bootstrap
+authorizer-lambda/function.zip
+
+# Environment files
+.env
+*.pem
+*.key
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
