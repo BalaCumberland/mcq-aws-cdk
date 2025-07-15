@@ -14,7 +14,7 @@ export class DatabaseStack extends cdk.Stack {
   public readonly vpc: ec2.Vpc;
   public readonly dbSecurityGroup: ec2.SecurityGroup;
   public readonly lambdaSecurityGroup: ec2.SecurityGroup;
-  public readonly dbSecret: secretsmanager.Secret;
+
 
   constructor(scope: Construct, id: string, props?: DatabaseStackProps) {
     super(scope, id, props);
@@ -105,21 +105,9 @@ export class DatabaseStack extends cdk.Stack {
       })
     });
 
-    // Database credentials
-    this.dbSecret = new secretsmanager.Secret(this, 'DbSecret', {
-      secretName: 'dbcredentials/postgres',
-      generateSecretString: {
-        secretStringTemplate: JSON.stringify({ username: 'postgres' }),
-        generateStringKey: 'password',
-        excludeCharacters: ' %+~`#$&*()|[]{}:;<>?!\'/"\\'
-      }
-    });
 
-    // Firebase service account secret
-    new secretsmanager.Secret(this, 'FirebaseSecret', {
-      secretName: 'mcq-app/firebase-service-account',
-      description: 'Firebase service account credentials for MCQ app'
-    });
+
+
 
     // PostgreSQL Database (Free Tier)
     const database = new rds.DatabaseInstance(this, 'PostgresDb', {
@@ -129,7 +117,7 @@ export class DatabaseStack extends cdk.Stack {
       securityGroups: [this.dbSecurityGroup],
       databaseName: 'mcqdb',
       instanceIdentifier: 'mcq-db',
-      credentials: rds.Credentials.fromSecret(this.dbSecret, 'postgres'),
+      credentials: rds.Credentials.fromGeneratedSecret('postgres'),
       allocatedStorage: 20,
       storageType: rds.StorageType.GP2,
       deleteAutomatedBackups: true,
@@ -141,14 +129,7 @@ export class DatabaseStack extends cdk.Stack {
       }
     });
 
-    // VPC Interface Endpoint for Secrets Manager in private subnets
-    this.vpc.addInterfaceEndpoint('SecretsManagerEndpoint', {
-      service: ec2.InterfaceVpcEndpointAwsService.SECRETS_MANAGER,
-      subnets: {
-        subnetType: ec2.SubnetType.PRIVATE_ISOLATED
-      },
-      securityGroups: [this.lambdaSecurityGroup]
-    });
+
 
     // Outputs
     new cdk.CfnOutput(this, 'DatabaseEndpoint', {

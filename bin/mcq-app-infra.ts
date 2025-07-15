@@ -20,6 +20,5 @@ new ApiLambdaStack(app, 'ApiLambdaStack', {
   vpc: dbStack.vpc,
   lambdaSecurityGroup: dbStack.lambdaSecurityGroup,
   dbSecurityGroup: dbStack.dbSecurityGroup,
-  dbSecretArn: dbStack.dbSecret.secretArn,
   sqlBackupBucket: bucketsStack.sqlBackupBucket
 });

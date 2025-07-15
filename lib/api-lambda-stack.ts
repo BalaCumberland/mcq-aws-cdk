@@ -10,8 +10,6 @@ interface ApiLambdaStackProps extends cdk.StackProps {
   vpc?: ec2.Vpc;
   dbSecurityGroup?: ec2.SecurityGroup;
   lambdaSecurityGroup?: ec2.SecurityGroup;
-  dbSecretArn?: string;
-  firebaseSecretArn?: string;
   sqlBackupBucket?: s3.Bucket;
 }
 
@@ -40,7 +38,9 @@ export class ApiLambdaStack extends cdk.Stack {
       memorySize: 256,
       tracing: lambda.Tracing.ACTIVE,
       environment: {
-        FIREBASE_SECRET_ARN: props?.firebaseSecretArn || ''
+        FIREBASE_PROJECT_ID: '',
+        FIREBASE_PRIVATE_KEY: '',
+        FIREBASE_CLIENT_EMAIL: ''
       }
     });
 
@@ -63,7 +63,11 @@ export class ApiLambdaStack extends cdk.Stack {
       },
       securityGroups: props?.lambdaSecurityGroup ? [props.lambdaSecurityGroup] : undefined,
       environment: {
-        DB_SECRET_ARN: props?.dbSecretArn || ''
+        DB_HOST: '',
+        DB_PORT: '',
+        DB_NAME: '',
+        DB_USER: '',
+        DB_PASSWORD: ''
       }
     });
 
@@ -127,25 +131,7 @@ export class ApiLambdaStack extends cdk.Stack {
       sourceArn: api.arnForExecuteApi()
     });
 
-    // Grant authorizer Lambda permission to read Firebase secrets
-    authorizerLambda.addToRolePolicy(new iam.PolicyStatement({
-      effect: iam.Effect.ALLOW,
-      actions: ['secretsmanager:GetSecretValue'],
-      resources: [
-        'arn:aws:secretsmanager:us-east-1:536697228264:secret:mcq-app/firebase-service-account-*'
-      ]
-    }));
-
-    // Grant main Lambda permission to read DB secrets
-    if (props?.dbSecretArn) {
-      goLambda.addToRolePolicy(new iam.PolicyStatement({
-        effect: iam.Effect.ALLOW,
-        actions: ['secretsmanager:GetSecretValue'],
-        resources: [
-          props.dbSecretArn
-        ]
-      }));
-    }
+    // No Secrets Manager permissions needed - using environment variables
 
     // Output API URL
     new cdk.CfnOutput(this, 'ApiUrl', {

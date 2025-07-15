@@ -5,11 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"os"
+	"strconv"
 
 	"github.com/aws/aws-lambda-go/events"
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/secretsmanager"
 	_ "github.com/lib/pq"
 )
 
@@ -80,28 +79,33 @@ func GetUserFromContext(request events.APIGatewayProxyRequest) (string, error) {
 }
 
 func getDBConfig() (*DBConfig, error) {
-	log.Printf("🔐 Getting DB config from Secrets Manager...")
-	sess := session.Must(session.NewSession())
-	svc := secretsmanager.New(sess)
-
-	log.Printf("📡 Calling GetSecretValue...")
-	result, err := svc.GetSecretValue(&secretsmanager.GetSecretValueInput{
-		SecretId: aws.String("dbcredentials/postgres"),
-	})
-	if err != nil {
-		log.Printf("❌ Failed to get secret: %v", err)
-		return nil, err
+	log.Printf("🔐 Getting DB config from environment variables...")
+	
+	host := os.Getenv("DB_HOST")
+	portStr := os.Getenv("DB_PORT")
+	username := os.Getenv("DB_USER")
+	password := os.Getenv("DB_PASSWORD")
+	dbname := os.Getenv("DB_NAME")
+	
+	if host == "" || portStr == "" || username == "" || password == "" || dbname == "" {
+		return nil, fmt.Errorf("missing database environment variables")
 	}
-
-	log.Printf("✅ Secret retrieved successfully")
-	var config DBConfig
-	err = json.Unmarshal([]byte(*result.SecretString), &config)
+	
+	port, err := strconv.Atoi(portStr)
 	if err != nil {
-		log.Printf("❌ Failed to parse secret JSON: %v", err)
-		return nil, err
+		return nil, fmt.Errorf("invalid DB_PORT: %v", err)
 	}
-	log.Printf("✅ DB config parsed successfully")
-	return &config, nil
+	
+	config := &DBConfig{
+		Host:     host,
+		Port:     port,
+		Username: username,
+		Password: password,
+		DBName:   dbname,
+	}
+	
+	log.Printf("✅ DB config loaded from environment")
+	return config, nil
 }
 
 func ConnectDB() (*sql.DB, error) {

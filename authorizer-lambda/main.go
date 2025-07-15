@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
 	"strings"
 	"time"
 
@@ -11,26 +12,28 @@ import (
 	"firebase.google.com/go/auth"
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/secretsmanager"
 	"google.golang.org/api/option"
 )
 
 var firebaseAuth *auth.Client
 
 func getFirebaseCredentials() ([]byte, error) {
-	sess := session.Must(session.NewSession())
-	svc := secretsmanager.New(sess)
+	projectID := os.Getenv("FIREBASE_PROJECT_ID")
+	privateKey := os.Getenv("FIREBASE_PRIVATE_KEY")
+	clientEmail := os.Getenv("FIREBASE_CLIENT_EMAIL")
 
-	result, err := svc.GetSecretValue(&secretsmanager.GetSecretValueInput{
-		SecretId: aws.String("mcq-app/firebase-service-account"),
-	})
-	if err != nil {
-		return nil, err
+	if projectID == "" || privateKey == "" || clientEmail == "" {
+		return nil, fmt.Errorf("missing Firebase environment variables")
 	}
 
-	return []byte(*result.SecretString), nil
+	credsJSON := fmt.Sprintf(`{
+		"type": "service_account",
+		"project_id": "%s",
+		"private_key": "%s",
+		"client_email": "%s"
+	}`, projectID, privateKey, clientEmail)
+
+	return []byte(credsJSON), nil
 }
 
 func initFirebase() error {
