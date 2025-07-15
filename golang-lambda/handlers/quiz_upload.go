@@ -5,13 +5,21 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"io"
+	"mime"
+	"mime/multipart"
 	"strconv"
+	"strings"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/xuri/excelize/v2"
 )
 
 func HandleQuizUpload(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+	// Extract query parameters
+	for k, v := range request.Headers {
+		fmt.Printf("🔍 Header [%s] = %s\n", k, v)
+	}
 	queryParams := request.QueryStringParameters
 	category := queryParams["category"]
 	durationStr := queryParams["duration"]
@@ -26,19 +34,72 @@ func HandleQuizUpload(request events.APIGatewayProxyRequest) (events.APIGatewayP
 		return CreateErrorResponse(400, "Invalid duration format"), nil
 	}
 
-	fileContent, err := base64.StdEncoding.DecodeString(request.Body)
-	if err != nil {
-		return CreateErrorResponse(400, "Invalid file encoding"), nil
+	// Parse Content-Type and extract boundary
+	contentType := request.Headers["Content-Type"]
+	if contentType == "" {
+		contentType = request.Headers["content-type"]
+	}
+	mediaType, params, err := mime.ParseMediaType(contentType)
+	if err != nil || !strings.HasPrefix(mediaType, "multipart/") {
+		fmt.Printf("❌ Content-Type: %s, MediaType: %s, Error: %v\n", contentType, mediaType, err)
+		return CreateErrorResponse(400, "Expected multipart/form-data content-type"), nil
 	}
 
+	// Decode base64 body if needed
+	var bodyBytes []byte
+	if request.IsBase64Encoded {
+		bodyBytes, err = base64.StdEncoding.DecodeString(request.Body)
+		if err != nil {
+			return CreateErrorResponse(400, "Failed to decode base64 body"), nil
+		}
+	} else {
+		bodyBytes = []byte(request.Body)
+	}
+
+	// Parse multipart form data
+	reader := multipart.NewReader(bytes.NewReader(bodyBytes), params["boundary"])
+
+	var fileContent []byte
+	for {
+		part, err := reader.NextPart()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return CreateErrorResponse(400, "Failed to parse multipart file"), nil
+		}
+		if part.FormName() == "file" {
+			fileContent, err = io.ReadAll(part)
+			if err != nil {
+				return CreateErrorResponse(400, "Failed to read file content"), nil
+			}
+			break
+		}
+	}
+
+	if len(fileContent) == 0 {
+		return CreateErrorResponse(400, "File content is empty or missing"), nil
+	}
+
+	fmt.Printf("📁 File content length: %d bytes\n", len(fileContent))
+	if len(fileContent) > 0 {
+		fmt.Printf("📁 First 20 bytes: %x\n", fileContent[:20])
+	}
+
+	fmt.Printf("📁 File content length: %d bytes\n", len(fileContent))
+	fmt.Printf("📁 First 50 bytes: %x\n", fileContent[:min(50, len(fileContent))])
+
+	// Process Excel and save
 	quizData, err := processExcel(fileContent, category, duration, quizName)
 	if err != nil {
-		return CreateErrorResponse(500, "Failed to process Excel file"), nil
+		fmt.Printf("❌ Excel processing error: %v\n", err)
+		return CreateErrorResponse(500, fmt.Sprintf("Failed to process Excel file: %v", err)), nil
 	}
 
 	err = SaveToPostgres(quizData)
 	if err != nil {
-		return CreateErrorResponse(500, "Failed to save to database"), nil
+		fmt.Printf("❌ Database save error: %v\n", err)
+		return CreateErrorResponse(500, fmt.Sprintf("Failed to save to database: %v", err)), nil
 	}
 
 	return CreateSuccessResponse("Quiz uploaded successfully"), nil
@@ -82,7 +143,12 @@ func processExcel(fileBytes []byte, category string, duration int, quizName stri
 		})
 	}
 
-	return QuizData{QuizName: quizName, Duration: duration, Category: category, Questions: questions}, nil
+	return QuizData{
+		QuizName:  quizName,
+		Duration:  duration,
+		Category:  category,
+		Questions: questions,
+	}, nil
 }
 
 func getCellValue(row []string, headerMap map[string]int, key string) string {

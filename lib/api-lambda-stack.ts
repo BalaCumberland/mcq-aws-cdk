@@ -86,6 +86,7 @@ export class ApiLambdaStack extends cdk.Stack {
 
     // API Gateway with CORS
     const api = new apigateway.RestApi(this, 'McqApi', {
+      binaryMediaTypes: ['multipart/form-data'],
       defaultCorsPreflightOptions: {
         allowOrigins: apigateway.Cors.ALL_ORIGINS,
         allowMethods: apigateway.Cors.ALL_METHODS,

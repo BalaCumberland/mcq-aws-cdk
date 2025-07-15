@@ -24,7 +24,7 @@ func lambdaHandler(request events.APIGatewayProxyRequest) (events.APIGatewayProx
 		}, nil
 	}
 
-	switch request.Resource {
+	switch request.Path {
 	case "/upload/questions":
 		return handlers.HandleQuizUpload(request)
 	case "/students/update":

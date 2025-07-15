@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"log"
+	"net/url"
 	"strings"
 	"time"
 
@@ -15,6 +16,14 @@ func HandleStudentGetByEmail(request events.APIGatewayProxyRequest) (events.APIG
 	if email == "" {
 		return CreateErrorResponse(400, "Missing 'email' query parameter"), nil
 	}
+
+	// URL decode the email parameter
+	decodedEmail, err := url.QueryUnescape(email)
+	if err != nil {
+		log.Printf("❌ URL decode error: %v", err)
+		return CreateErrorResponse(400, "Invalid email parameter"), nil
+	}
+	email = decodedEmail
 
 	normalizedEmail := strings.ToLower(email)
 
@@ -32,18 +41,18 @@ func HandleStudentGetByEmail(request events.APIGatewayProxyRequest) (events.APIG
 	`
 
 	var student struct {
-		ID           int     `json:"id"`
-		Email        string  `json:"email"`
-		Name         string  `json:"name"`
-		StudentClass string  `json:"student_class"`
-		PhoneNumber  string  `json:"phone_number"`
-		SubExpDate   *string `json:"sub_exp_date"`
-		UpdatedBy    *string `json:"updated_by"`
-		Amount       *float64 `json:"amount"`
-		PaymentTime  *string `json:"payment_time"`
-		Role         *string `json:"role"`
-		PaymentStatus string `json:"payment_status"`
-		Subjects     []string `json:"subjects"`
+		ID            int      `json:"id"`
+		Email         string   `json:"email"`
+		Name          string   `json:"name"`
+		StudentClass  string   `json:"student_class"`
+		PhoneNumber   string   `json:"phone_number"`
+		SubExpDate    *string  `json:"sub_exp_date"`
+		UpdatedBy     *string  `json:"updated_by"`
+		Amount        *float64 `json:"amount"`
+		PaymentTime   *string  `json:"payment_time"`
+		Role          *string  `json:"role"`
+		PaymentStatus string   `json:"payment_status"`
+		Subjects      []string `json:"subjects"`
 	}
 
 	var subExpDate, updatedBy, paymentTime, role sql.NullString
