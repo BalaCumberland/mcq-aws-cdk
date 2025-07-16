@@ -28,10 +28,10 @@ type QuizData struct {
 }
 
 type Question struct {
-	Explanation      string `json:"explanation"`
-	Question         string `json:"question"`
-	CorrectAnswer    string `json:"correctAnswer"`
-	IncorrectAnswers string `json:"incorrectAnswers"`
+	Explanation   string   `json:"explanation"`
+	Question      string   `json:"question"`
+	CorrectAnswer string   `json:"correctAnswer"`
+	AllAnswers    []string `json:"allAnswers"`
 }
 
 type StudentUpdateRequest struct {

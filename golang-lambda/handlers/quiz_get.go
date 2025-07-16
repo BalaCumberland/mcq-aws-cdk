@@ -77,17 +77,30 @@ func HandleQuizGetByName(request events.APIGatewayProxyRequest) (events.APIGatew
 	}
 	defer tx.Rollback()
 
-	// Fetch quiz data
+	// Fetch quiz data and remove correctAnswer from questions
 	var quizData struct {
-		QuizName  string          `json:"quizName"`
-		Duration  int             `json:"duration"`
-		Category  string          `json:"category"`
-		Questions json.RawMessage `json:"questions"`
+		QuizName  string                   `json:"quizName"`
+		Duration  int                      `json:"duration"`
+		Category  string                   `json:"category"`
+		Questions []map[string]interface{} `json:"questions"`
 	}
 
+	var questionsJSON json.RawMessage
 	err = tx.QueryRow(
 		`SELECT quiz_name AS "quizName", duration, category, questions FROM quiz_questions WHERE quiz_name = $1`,
-		quizName).Scan(&quizData.QuizName, &quizData.Duration, &quizData.Category, &quizData.Questions)
+		quizName).Scan(&quizData.QuizName, &quizData.Duration, &quizData.Category, &questionsJSON)
+
+	if err == nil {
+		// Parse questions and remove correctAnswer
+		var questions []map[string]interface{}
+		json.Unmarshal(questionsJSON, &questions)
+
+		for i := range questions {
+			delete(questions[i], "correctAnswer")
+			delete(questions[i], "explanation")
+		}
+		quizData.Questions = questions
+	}
 
 	if err != nil {
 		if err == sql.ErrNoRows {

@@ -122,6 +122,14 @@ export class ApiLambdaStack extends cdk.Stack {
       apiKeyRequired: false
     });
 
+    // Quiz submit endpoint with authorization
+    const quizResource = api.root.addResource('quiz');
+    const quizSubmitResource = quizResource.addResource('submit');
+    quizSubmitResource.addMethod('POST', goIntegration, {
+      authorizer: authorizer,
+      apiKeyRequired: false
+    });
+
     // All other routes with Firebase authorization
     const proxyResource = api.root.addProxy({
       defaultIntegration: goIntegration,

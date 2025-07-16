@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS quiz_questions (
   questions JSONB NOT NULL,
   correct_answer VARCHAR(255),
   explanation VARCHAR(255),
-  incorrect_answers VARCHAR(255)[],
+  all_answers VARCHAR(255)[],
   question VARCHAR(255),
   uploaded_time TIMESTAMP
 );

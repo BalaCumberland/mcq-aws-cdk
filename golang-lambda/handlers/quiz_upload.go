@@ -126,7 +126,7 @@ func processExcel(fileBytes []byte, category string, duration int, quizName stri
 		headerMap[header] = i
 	}
 
-	requiredHeaders := []string{"Question", "CorrectAnswer", "IncorrectAnswers", "Explanation"}
+	requiredHeaders := []string{"Question", "CorrectAnswer", "AllAnswers", "Explanation"}
 	for _, header := range requiredHeaders {
 		if _, exists := headerMap[header]; !exists {
 			return QuizData{}, fmt.Errorf("missing required column: %s", header)
@@ -135,11 +135,21 @@ func processExcel(fileBytes []byte, category string, duration int, quizName stri
 
 	var questions []Question
 	for _, row := range rows[1:] {
+		correctAnswer := getCellValue(row, headerMap, "CorrectAnswer")
+		allAnswersStr := getCellValue(row, headerMap, "AllAnswers")
+		
+		// Parse all answers from Excel
+		var allAnswers []string
+		if allAnswersStr != "" {
+			// Split all answers by ~~ delimiter
+			allAnswers = strings.Split(allAnswersStr, " ~~ ")
+		}
+		
 		questions = append(questions, Question{
-			Question:         getCellValue(row, headerMap, "Question"),
-			CorrectAnswer:    getCellValue(row, headerMap, "CorrectAnswer"),
-			IncorrectAnswers: getCellValue(row, headerMap, "IncorrectAnswers"),
-			Explanation:      getCellValue(row, headerMap, "Explanation"),
+			Question:      getCellValue(row, headerMap, "Question"),
+			CorrectAnswer: correctAnswer,
+			AllAnswers:    allAnswers,
+			Explanation:   getCellValue(row, headerMap, "Explanation"),
 		})
 	}
 
