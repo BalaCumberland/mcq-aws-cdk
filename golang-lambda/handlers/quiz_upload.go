@@ -141,8 +141,11 @@ func processExcel(fileBytes []byte, category string, duration int, quizName stri
 		// Parse all answers from Excel
 		var allAnswers []string
 		if allAnswersStr != "" {
-			// Split all answers by ~~ delimiter
-			allAnswers = strings.Split(allAnswersStr, " ~~ ")
+			// Split all answers by ~~ delimiter (with or without spaces)
+			allAnswers = strings.Split(allAnswersStr, "~~")
+			for i := range allAnswers {
+				allAnswers[i] = strings.TrimSpace(allAnswers[i])
+			}
 		}
 		
 		questions = append(questions, Question{
