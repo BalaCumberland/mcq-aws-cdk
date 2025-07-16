@@ -14,8 +14,6 @@ golang-lambda/go-upload-excel
 golang-lambda/function.zip
 golang-lambda/put-event.json
 
-authorizer-lambda/bootstrap
-authorizer-lambda/function.zip
 
 # Environment files
 .env

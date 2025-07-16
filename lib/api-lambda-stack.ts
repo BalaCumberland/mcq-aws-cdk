@@ -115,6 +115,13 @@ export class ApiLambdaStack extends cdk.Stack {
       apiKeyRequired: false
     });
 
+    // Students register endpoint without authorization
+    const studentsResource = api.root.addResource('students');
+    const studentsRegisterResource = studentsResource.addResource('register');
+    studentsRegisterResource.addMethod('POST', goIntegration, {
+      apiKeyRequired: false
+    });
+
     // All other routes with Firebase authorization
     const proxyResource = api.root.addProxy({
       defaultIntegration: goIntegration,
