@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS quiz_questions (
   correct_answer VARCHAR(255),
   explanation VARCHAR(255),
   all_answers VARCHAR(255)[],
-  question VARCHAR(255),
+  question TEXT,
   uploaded_time TIMESTAMP
 );
 

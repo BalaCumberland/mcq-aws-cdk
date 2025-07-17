@@ -7,18 +7,9 @@ node_modules
 .cdk.staging
 cdk.out
 
-# Lambda build artifacts
+# Go build artifacts
 golang-lambda/bootstrap
-golang-lambda/main
-golang-lambda/go-upload-excel
 golang-lambda/function.zip
-golang-lambda/put-event.json
-
-
-# Environment files
-.env
-*.pem
-*.key
 
 # IDE
 .vscode/
