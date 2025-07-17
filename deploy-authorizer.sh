@@ -1,6 +1,6 @@
 #!/bin/bash
-cd authorizer-lambda
-mkdir -p deployment
+cd lambdas/authorizer-lambda
+mkdir deployment
 cd deployment
 cp -r ../index.js ../package.json ../package-lock.json ../node_modules ./
 zip -r ../function.zip ./*

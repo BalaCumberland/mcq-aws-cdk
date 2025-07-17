@@ -8,8 +8,10 @@ node_modules
 cdk.out
 
 # Go build artifacts
-golang-lambda/bootstrap
-golang-lambda/function.zip
+lambdas/golang-lambda/bootstrap
+lambdas/golang-lambda/function.zip
+lambdas/authorizer-lambda/function.zip
+lambdas/authorizer-lambda/deployment/
 
 # IDE
 .vscode/
