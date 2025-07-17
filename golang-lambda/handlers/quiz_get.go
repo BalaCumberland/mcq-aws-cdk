@@ -110,34 +110,34 @@ func HandleQuizGetByName(request events.APIGatewayProxyRequest) (events.APIGatew
 		return CreateErrorResponse(500, "Internal Server Error"), nil
 	}
 
-	// Update student_quizzes table
-	quizUpdateQuery := `
-		INSERT INTO student_quizzes (email, quiz_names) 
-		VALUES ($1, to_jsonb(ARRAY[$2]::text[])) 
-		ON CONFLICT (email) 
-		DO UPDATE SET quiz_names = (
-			SELECT jsonb_agg(DISTINCT q) 
-			FROM jsonb_array_elements(
-				COALESCE(student_quizzes.quiz_names, '[]'::jsonb) || to_jsonb(ARRAY[$2]::text[])
-			) AS q
-		)
-		RETURNING quiz_names`
+	// // Update student_quizzes table
+	// quizUpdateQuery := `
+	// 	INSERT INTO student_quizzes (email, quiz_names)
+	// 	VALUES ($1, to_jsonb(ARRAY[$2]::text[]))
+	// 	ON CONFLICT (email)
+	// 	DO UPDATE SET quiz_names = (
+	// 		SELECT jsonb_agg(DISTINCT q)
+	// 		FROM jsonb_array_elements(
+	// 			COALESCE(student_quizzes.quiz_names, '[]'::jsonb) || to_jsonb(ARRAY[$2]::text[])
+	// 		) AS q
+	// 	)
+	// 	RETURNING quiz_names`
 
-	var updatedQuizNames json.RawMessage
-	err = tx.QueryRow(quizUpdateQuery, email, quizName).Scan(&updatedQuizNames)
-	if err != nil {
-		log.Printf("❌ Failed to update student_quizzes: %v", err)
-		return CreateErrorResponse(500, "Internal Server Error"), nil
-	}
+	// var updatedQuizNames json.RawMessage
+	// err = tx.QueryRow(quizUpdateQuery, email, quizName).Scan(&updatedQuizNames)
+	// if err != nil {
+	// 	log.Printf("❌ Failed to update student_quizzes: %v", err)
+	// 	return CreateErrorResponse(500, "Internal Server Error"), nil
+	// }
 
-	log.Printf("✅ Updated student_quizzes: %s", string(updatedQuizNames))
+	// log.Printf("✅ Updated student_quizzes: %s", string(updatedQuizNames))
 
-	// Commit transaction
-	err = tx.Commit()
-	if err != nil {
-		log.Printf("❌ Failed to commit transaction: %v", err)
-		return CreateErrorResponse(500, "Internal Server Error"), nil
-	}
+	// // Commit transaction
+	// err = tx.Commit()
+	// if err != nil {
+	// 	log.Printf("❌ Failed to commit transaction: %v", err)
+	// 	return CreateErrorResponse(500, "Internal Server Error"), nil
+	// }
 
 	response := map[string]interface{}{
 		"message": "Quiz fetched and updated successfully",

@@ -39,6 +39,8 @@ func lambdaHandler(request events.APIGatewayProxyRequest) (events.APIGatewayProx
 		return handlers.HandleQuizGetByName(request)
 	case "/quiz/submit":
 		return handlers.HandleQuizSubmit(request)
+	case "/quiz/delete":
+		return handlers.HandleQuizDelete(request)
 	default:
 		log.Printf("❌ Invalid API Path: %s", request.Path)
 		return events.APIGatewayProxyResponse{

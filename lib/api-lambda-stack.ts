@@ -130,6 +130,13 @@ export class ApiLambdaStack extends cdk.Stack {
       apiKeyRequired: false
     });
 
+    // Quiz delete endpoint with authorization
+    const quizDeleteResource = quizResource.addResource('delete');
+    quizDeleteResource.addMethod('DELETE', goIntegration, {
+      authorizer: authorizer,
+      apiKeyRequired: false
+    });
+
     // All other routes with Firebase authorization
     const proxyResource = api.root.addProxy({
       defaultIntegration: goIntegration,
