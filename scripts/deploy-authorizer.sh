@@ -1,5 +1,5 @@
 #!/bin/bash
-cd ../lambdas/authorizer-lambda
+cd lambdas/authorizer-lambda
 mkdir deployment
 cd deployment
 cp -r ../index.js ../package.json ../package-lock.json ../node_modules ./

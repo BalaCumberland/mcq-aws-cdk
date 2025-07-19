@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/aws/aws-lambda-go/events"
 	_ "github.com/lib/pq"
@@ -123,6 +124,13 @@ func ConnectDB() (*sql.DB, error) {
 		log.Printf("❌ Failed to open DB connection: %v", err)
 		return nil, err
 	}
+	
+	// Configure connection pool
+	db.SetMaxOpenConns(10)
+	db.SetMaxIdleConns(5)
+	db.SetConnMaxLifetime(5 * time.Minute)
+	db.SetConnMaxIdleTime(1 * time.Minute)
+	
 	log.Printf("✅ Database connection established")
 	return db, nil
 }
