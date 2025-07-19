@@ -19,10 +19,11 @@ type SubmitRequest struct {
 }
 
 type QuestionResult struct {
-	Qno         int    `json:"qno"`
-	Question    string `json:"question"`
-	Status      string `json:"status"` // "correct", "wrong", "skipped"
-	Explanation string `json:"explanation"`
+	Qno           int      `json:"qno"`
+	Question      string   `json:"question"`
+	Status        string   `json:"status"` // "correct", "wrong", "skipped"
+	CorrectAnswer []string `json:"correctAnswer"`
+	Explanation   string   `json:"explanation"`
 }
 
 type SubmitResponse struct {
@@ -137,11 +138,18 @@ func HandleQuizSubmit(request events.APIGatewayProxyRequest) (events.APIGatewayP
 			}
 		}
 		
+		// Parse correct answers for response
+		correctAnswersForResponse := strings.Split(question.CorrectAnswer, ",")
+		for j := range correctAnswersForResponse {
+			correctAnswersForResponse[j] = strings.TrimSpace(correctAnswersForResponse[j])
+		}
+		
 		results = append(results, QuestionResult{
-			Qno:         qno,
-			Question:    question.Question,
-			Status:      status,
-			Explanation: question.Explanation,
+			Qno:           qno,
+			Question:      question.Question,
+			Status:        status,
+			CorrectAnswer: correctAnswersForResponse,
+			Explanation:   question.Explanation,
 		})
 	}
 
