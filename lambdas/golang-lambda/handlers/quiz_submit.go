@@ -22,6 +22,7 @@ type QuestionResult struct {
 	Qno           int      `json:"qno"`
 	Question      string   `json:"question"`
 	Status        string   `json:"status"` // "correct", "wrong", "skipped"
+	StudentAnswer []string `json:"studentAnswer"`
 	CorrectAnswer []string `json:"correctAnswer"`
 	Explanation   string   `json:"explanation"`
 }
@@ -138,16 +139,69 @@ func HandleQuizSubmit(request events.APIGatewayProxyRequest) (events.APIGatewayP
 			}
 		}
 		
-		// Parse correct answers for response
-		correctAnswersForResponse := strings.Split(question.CorrectAnswer, ",")
-		for j := range correctAnswersForResponse {
-			correctAnswersForResponse[j] = strings.TrimSpace(correctAnswersForResponse[j])
+		// Map correct answer letters to actual answer text
+		correctAnswersForResponse := []string{}
+		correctAnswerLetters := strings.Split(question.CorrectAnswer, ",")
+		for _, letter := range correctAnswerLetters {
+			letter = strings.ToUpper(strings.TrimSpace(letter))
+			switch letter {
+			case "A":
+				if len(question.AllAnswers) > 0 {
+					correctAnswersForResponse = append(correctAnswersForResponse, question.AllAnswers[0])
+				}
+			case "B":
+				if len(question.AllAnswers) > 1 {
+					correctAnswersForResponse = append(correctAnswersForResponse, question.AllAnswers[1])
+				}
+			case "C":
+				if len(question.AllAnswers) > 2 {
+					correctAnswersForResponse = append(correctAnswersForResponse, question.AllAnswers[2])
+				}
+			case "D":
+				if len(question.AllAnswers) > 3 {
+					correctAnswersForResponse = append(correctAnswersForResponse, question.AllAnswers[3])
+				}
+			default:
+				// If not A/B/C/D, save as is
+				correctAnswersForResponse = append(correctAnswersForResponse, letter)
+			}
+		}
+		
+		// Map student answer letters to actual answer text
+		var studentAnswerForResponse []string
+		if hasAnswer && len(answer.Options) > 0 {
+			for _, option := range answer.Options {
+				switch strings.ToUpper(strings.TrimSpace(option)) {
+				case "A":
+					if len(question.AllAnswers) > 0 {
+						studentAnswerForResponse = append(studentAnswerForResponse, question.AllAnswers[0])
+					}
+				case "B":
+					if len(question.AllAnswers) > 1 {
+						studentAnswerForResponse = append(studentAnswerForResponse, question.AllAnswers[1])
+					}
+				case "C":
+					if len(question.AllAnswers) > 2 {
+						studentAnswerForResponse = append(studentAnswerForResponse, question.AllAnswers[2])
+					}
+				case "D":
+					if len(question.AllAnswers) > 3 {
+						studentAnswerForResponse = append(studentAnswerForResponse, question.AllAnswers[3])
+					}
+				default:
+					// If not A/B/C/D, save as is
+					studentAnswerForResponse = append(studentAnswerForResponse, option)
+				}
+			}
+		} else {
+			studentAnswerForResponse = []string{} // Empty array for skipped
 		}
 		
 		results = append(results, QuestionResult{
 			Qno:           qno,
 			Question:      question.Question,
 			Status:        status,
+			StudentAnswer: studentAnswerForResponse,
 			CorrectAnswer: correctAnswersForResponse,
 			Explanation:   question.Explanation,
 		})
@@ -156,6 +210,24 @@ func HandleQuizSubmit(request events.APIGatewayProxyRequest) (events.APIGatewayP
 	var percentage float64
 	if len(questions) > 0 {
 		percentage = float64(correctCount) / float64(len(questions)) * 100
+	}
+
+	// Get user email and quiz category for progress tracking
+	email, err := GetUserFromContext(request)
+	if err != nil {
+		log.Printf("❌ Error getting user from context: %v", err)
+		// Continue without saving progress if no user context
+	} else {
+		// Get quiz category
+		var category string
+		err = db.QueryRow("SELECT category FROM quiz_questions WHERE quiz_name = $1", quizName).Scan(&category)
+		if err == nil {
+			// Save quiz attempt
+			err = SaveQuizAttempt(email, quizName, category, correctCount, wrongCount, skippedCount, len(questions), percentage, results)
+			if err != nil {
+				log.Printf("❌ Error saving quiz attempt: %v", err)
+			}
+		}
 	}
 
 	response := SubmitResponse{
