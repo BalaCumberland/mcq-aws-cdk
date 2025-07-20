@@ -10,8 +10,10 @@ import (
 )
 
 type ProgressSummary struct {
-	Category   string  `json:"category"`
-	Percentage float64 `json:"percentage"`
+	Category     string  `json:"category"`
+	Percentage   float64 `json:"percentage"`
+	Attempted    int     `json:"attempted"`
+	Unattempted  int     `json:"unattempted"`
 }
 
 type TestScore struct {
@@ -107,14 +109,19 @@ func HandleStudentProgress(request events.APIGatewayProxyRequest) (events.APIGat
 
 	// Get category summary for enrolled subjects only
 	categorySummary := []ProgressSummary{}
+	
+	// Create map to track attempted quizzes per category
+	attemptedMap := make(map[string]int)
+	percentageMap := make(map[string]float64)
+	
 	rows, err := db.Query(`
 		SELECT 
 			category,
-			AVG(percentage) as percentage
+			COUNT(*) as attempted_count,
+			AVG(percentage) as avg_percentage
 		FROM student_quiz_attempts 
 		WHERE email = $1 AND category IN (`+strings.Join(placeholders, ",")+`)
 		GROUP BY category
-		ORDER BY category
 	`, args...)
 	if err != nil {
 		log.Printf("❌ Error fetching category summary: %v", err)
@@ -123,12 +130,39 @@ func HandleStudentProgress(request events.APIGatewayProxyRequest) (events.APIGat
 	defer rows.Close()
 
 	for rows.Next() {
-		var summary ProgressSummary
-		err := rows.Scan(&summary.Category, &summary.Percentage)
+		var category string
+		var attempted int
+		var percentage float64
+		err := rows.Scan(&category, &attempted, &percentage)
 		if err != nil {
 			continue
 		}
-		categorySummary = append(categorySummary, summary)
+		attemptedMap[category] = attempted
+		percentageMap[category] = percentage
+	}
+	
+	// Get total quiz count per category
+	for _, category := range enrolledSubjects {
+		var totalQuizzes int
+		err = db.QueryRow(`
+			SELECT COUNT(*) 
+			FROM quiz_questions 
+			WHERE category = $1
+		`, category).Scan(&totalQuizzes)
+		if err != nil {
+			totalQuizzes = 0
+		}
+		
+		attempted := attemptedMap[category]
+		unattempted := totalQuizzes - attempted
+		percentage := percentageMap[category]
+		
+		categorySummary = append(categorySummary, ProgressSummary{
+			Category:    category,
+			Percentage:  percentage,
+			Attempted:   attempted,
+			Unattempted: unattempted,
+		})
 	}
 
 	// Get individual test scores for enrolled subjects only
