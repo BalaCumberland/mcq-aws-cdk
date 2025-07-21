@@ -109,6 +109,12 @@ export class DatabaseStack extends cdk.Stack {
 
 
 
+    // DynamoDB VPC Endpoint for private subnet access
+    this.vpc.addGatewayEndpoint('DynamoDbEndpoint', {
+      service: ec2.GatewayVpcEndpointAwsService.DYNAMODB,
+      subnets: [{ subnetType: ec2.SubnetType.PRIVATE_ISOLATED }]
+    });
+
     // PostgreSQL Database (Free Tier)
     const database = new rds.DatabaseInstance(this, 'PostgresDb', {
       engine: rds.DatabaseInstanceEngine.POSTGRES,
