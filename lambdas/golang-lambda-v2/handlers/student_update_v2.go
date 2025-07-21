@@ -40,13 +40,15 @@ func HandleStudentUpdateV2(request events.APIGatewayProxyRequest) (events.APIGat
 		}
 	}
 
-	// Check permissions
+	// Check permissions - only admin and super can update students
+	if userRole != "admin" && userRole != "super" {
+		return CreateErrorResponse(403, "Only 'admin' or 'super' role can update student data"), nil
+	}
+	
+	// Additional check for subscription updates - only super
 	isSubscriptionUpdate := updateRequest.Amount > 0
 	if isSubscriptionUpdate && userRole != "super" {
-		return CreateErrorResponse(403, "Only 'super' role can update subscription"), nil
-	}
-	if !isSubscriptionUpdate && userRole != "admin" && userRole != "super" {
-		return CreateErrorResponse(403, "Only 'admin' or 'super' role can update student fields"), nil
+		return CreateErrorResponse(403, "Only 'super' role can update subscription amounts"), nil
 	}
 
 	// Get existing student
