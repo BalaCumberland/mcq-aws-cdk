@@ -78,7 +78,8 @@ func HandleStudentProgressV2(request events.APIGatewayProxyRequest) (events.APIG
 
 	// Create maps to track category stats
 	attemptedQuizzes := make(map[string]map[string]bool) // category -> quiz names
-	percentageMap := make(map[string]float64)
+	percentageSum := make(map[string]float64)
+	percentageCount := make(map[string]int)
 	individualTests := make(map[string][]TestScore)
 
 	// Process attempts
@@ -139,10 +140,9 @@ func HandleStudentProgressV2(request events.APIGatewayProxyRequest) (events.APIG
 			attemptedQuizzes[category] = make(map[string]bool)
 		}
 		attemptedQuizzes[category][quizName] = true
-		if percentage > percentageMap[category] {
-			percentageMap[category] = percentage
-			log.Printf("📊 Updated %s max percentage to: %f", category, percentage)
-		}
+		percentageSum[category] += percentage
+		percentageCount[category]++
+		log.Printf("📊 Added %s percentage: %f (total: %f, count: %d)", category, percentage, percentageSum[category], percentageCount[category])
 
 		// Add to individual tests
 		test := TestScore{
@@ -179,11 +179,17 @@ func HandleStudentProgressV2(request events.APIGatewayProxyRequest) (events.APIG
 
 		attempted := len(attemptedQuizzes[category])
 		unattempted := totalQuizzes - attempted
-		percentage := percentageMap[category]
+		
+		// Calculate average percentage and round to 1 decimal
+		var avgPercentage float64
+		if percentageCount[category] > 0 {
+			avgPercentage = percentageSum[category] / float64(percentageCount[category])
+			avgPercentage = float64(int(avgPercentage*10+0.5)) / 10 // Round to 1 decimal
+		}
 
 		categorySummary = append(categorySummary, ProgressSummary{
 			Category:    category,
-			Percentage:  percentage,
+			Percentage:  avgPercentage,
 			Attempted:   attempted,
 			Unattempted: unattempted,
 		})
