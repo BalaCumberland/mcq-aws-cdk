@@ -123,27 +123,7 @@ func CheckAdminRole(request events.APIGatewayProxyRequest) (string, error) {
 	return userRole, nil
 }
 
-// CheckAdminRole verifies if user has admin or super role
-func CheckAdminRole(request events.APIGatewayProxyRequest) (string, error) {
-	userEmail, err := GetUserFromContext(request)
-	if err != nil {
-		return "", fmt.Errorf("unauthorized: %v", err)
-	}
-	
-	userStudent, _ := GetStudentFromDynamoDB(strings.ToLower(userEmail))
-	userRole := "student"
-	if userStudent != nil && userStudent.Role != nil {
-		if roleStr, ok := userStudent.Role.(string); ok {
-			userRole = roleStr
-		}
-	}
-	
-	if userRole != "admin" && userRole != "super" {
-		return "", fmt.Errorf("only 'admin' or 'super' role allowed")
-	}
-	
-	return userRole, nil
-}
+
 
 func getDBConfig() (*DBConfig, error) {
 	log.Printf("🔐 Getting DB config from environment variables...")
