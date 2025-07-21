@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-lambda-go/events"
@@ -98,6 +99,50 @@ func GetUserFromContext(request events.APIGatewayProxyRequest) (string, error) {
 		return "", fmt.Errorf("missing user email from authorizer")
 	}
 	return email, nil
+}
+
+// CheckAdminRole verifies if user has admin or super role
+func CheckAdminRole(request events.APIGatewayProxyRequest) (string, error) {
+	userEmail, err := GetUserFromContext(request)
+	if err != nil {
+		return "", err
+	}
+	
+	userStudent, _ := GetStudentFromDynamoDB(strings.ToLower(userEmail))
+	userRole := "student"
+	if userStudent != nil && userStudent.Role != nil {
+		if roleStr, ok := userStudent.Role.(string); ok {
+			userRole = roleStr
+		}
+	}
+	
+	if userRole != "admin" && userRole != "super" {
+		return "", fmt.Errorf("only 'admin' or 'super' role allowed")
+	}
+	
+	return userRole, nil
+}
+
+// CheckAdminRole verifies if user has admin or super role
+func CheckAdminRole(request events.APIGatewayProxyRequest) (string, error) {
+	userEmail, err := GetUserFromContext(request)
+	if err != nil {
+		return "", fmt.Errorf("unauthorized: %v", err)
+	}
+	
+	userStudent, _ := GetStudentFromDynamoDB(strings.ToLower(userEmail))
+	userRole := "student"
+	if userStudent != nil && userStudent.Role != nil {
+		if roleStr, ok := userStudent.Role.(string); ok {
+			userRole = roleStr
+		}
+	}
+	
+	if userRole != "admin" && userRole != "super" {
+		return "", fmt.Errorf("only 'admin' or 'super' role allowed")
+	}
+	
+	return userRole, nil
 }
 
 func getDBConfig() (*DBConfig, error) {

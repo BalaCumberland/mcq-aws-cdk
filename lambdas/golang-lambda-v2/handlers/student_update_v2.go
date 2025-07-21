@@ -10,12 +10,12 @@ import (
 )
 
 func HandleStudentUpdateV2(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	userEmail, err := GetUserFromContext(request)
+	// Check admin permissions
+	userRole, err := CheckAdminRole(request)
 	if err != nil {
-		log.Printf("❌ Failed to get user from context: %v", err)
-		return CreateErrorResponse(401, "Unauthorized"), nil
+		log.Printf("❌ Permission denied: %v", err)
+		return CreateErrorResponse(403, err.Error()), nil
 	}
-	log.Printf("🔐 Authenticated user: %s", userEmail)
 
 	var updateRequest StudentUpdateRequest
 	err = json.Unmarshal([]byte(request.Body), &updateRequest)
@@ -31,20 +31,6 @@ func HandleStudentUpdateV2(request events.APIGatewayProxyRequest) (events.APIGat
 	email := strings.ToLower(updateRequest.Email)
 	log.Printf("📌 Updating student: %s", email)
 
-	// Get user role
-	userStudent, _ := GetStudentFromDynamoDB(strings.ToLower(userEmail))
-	userRole := "student"
-	if userStudent != nil && userStudent.Role != nil {
-		if roleStr, ok := userStudent.Role.(string); ok {
-			userRole = roleStr
-		}
-	}
-
-	// Check permissions - only admin and super can update students
-	if userRole != "admin" && userRole != "super" {
-		return CreateErrorResponse(403, "Only 'admin' or 'super' role can update student data"), nil
-	}
-	
 	// Additional check for subscription updates - only super
 	isSubscriptionUpdate := updateRequest.Amount > 0
 	if isSubscriptionUpdate && userRole != "super" {

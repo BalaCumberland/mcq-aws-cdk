@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"log"
+	"strings"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-sdk-go/aws"
@@ -10,6 +11,13 @@ import (
 )
 
 func HandleQuizDeleteV2(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+	// Check admin permissions
+	_, err := CheckAdminRole(request)
+	if err != nil {
+		log.Printf("❌ Permission denied: %v", err)
+		return CreateErrorResponse(403, err.Error()), nil
+	}
+	
 	quizName := request.QueryStringParameters["quizName"]
 	if quizName == "" {
 		return CreateErrorResponse(400, "Missing 'quizName' parameter"), nil
@@ -18,7 +26,7 @@ func HandleQuizDeleteV2(request events.APIGatewayProxyRequest) (events.APIGatewa
 	log.Printf("📌 Deleting quiz: %s", quizName)
 
 	// Delete quiz
-	_, err := dynamoClient.DeleteItem(&dynamodb.DeleteItemInput{
+	_, err = dynamoClient.DeleteItem(&dynamodb.DeleteItemInput{
 		TableName: aws.String("quiz_questions"),
 		Key: map[string]*dynamodb.AttributeValue{
 			"quiz_name": {S: aws.String(quizName)},
@@ -31,7 +39,7 @@ func HandleQuizDeleteV2(request events.APIGatewayProxyRequest) (events.APIGatewa
 	}
 
 	// Delete all attempt records for this quiz
-	scanResult, err := dynamoClient.Scan(&dynamodb.ScanInput{
+	scanResult, scanErr := dynamoClient.Scan(&dynamodb.ScanInput{
 		TableName: aws.String("student_quiz_attempts"),
 		FilterExpression: aws.String("quiz_name = :quiz_name"),
 		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
@@ -39,7 +47,7 @@ func HandleQuizDeleteV2(request events.APIGatewayProxyRequest) (events.APIGatewa
 		},
 	})
 
-	if err == nil {
+	if scanErr == nil {
 		for _, item := range scanResult.Items {
 			if email := item["email"]; email != nil && email.S != nil {
 				_, _ = dynamoClient.DeleteItem(&dynamodb.DeleteItemInput{

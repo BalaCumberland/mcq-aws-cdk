@@ -17,6 +17,13 @@ import (
 )
 
 func HandleQuizUploadV2(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+	// Check admin permissions
+	_, err := CheckAdminRole(request)
+	if err != nil {
+		log.Printf("❌ Permission denied: %v", err)
+		return CreateErrorResponse(403, err.Error()), nil
+	}
+	
 	// Extract query parameters
 	queryParams := request.QueryStringParameters
 	category := queryParams["category"]
