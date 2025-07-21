@@ -1,6 +1,9 @@
 package handlers
 
 import (
+	"net/http"
+	"time"
+
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
@@ -10,7 +13,23 @@ import (
 var dynamoClient *dynamodb.DynamoDB
 
 func init() {
-	sess := session.Must(session.NewSession())
+	// Optimized HTTP client with connection pooling
+	httpClient := &http.Client{
+		Timeout: 10 * time.Second,
+		Transport: &http.Transport{
+			MaxIdleConns:        100,
+			MaxIdleConnsPerHost: 10,
+			IdleConnTimeout:     30 * time.Second,
+			DisableCompression:  false,
+		},
+	}
+
+	sess := session.Must(session.NewSession(&aws.Config{
+		Region:     aws.String("us-east-1"),
+		MaxRetries: aws.Int(3),
+		HTTPClient: httpClient,
+	}))
+	
 	dynamoClient = dynamodb.New(sess)
 }
 
