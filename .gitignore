@@ -20,3 +20,8 @@ lambdas/authorizer-lambda/deployment/
 # OS
 .DS_Store
 Thumbs.db
+lambdas/migration-lambda/function.zip
+lambdas/golang-lambda-v2/function.zip
+.gitignore
+.gitignore
+lambdas/golang-lambda-v2/bootstrap

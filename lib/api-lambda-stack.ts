@@ -44,32 +44,7 @@ export class ApiLambdaStack extends cdk.Stack {
       }
     });
 
-    // Main Lambda Function in VPC public subnet
-    const goLambda = new lambda.Function(this, 'GolangUploadApi', {
-      functionName: 'golang-upload-api',
-      runtime: lambda.Runtime.PROVIDED_AL2023,
-      handler: 'bootstrap',
-      architecture: lambda.Architecture.ARM_64,
-      code: lambda.Code.fromAsset('lambdas/golang-lambda'),
-      timeout: cdk.Duration.seconds(300),
-      memorySize: 512,
-      tracing: lambda.Tracing.ACTIVE,
-      vpc: props?.vpc,
-      vpcSubnets: {
-        subnets: [
-          ec2.Subnet.fromSubnetId(this, 'PrivateSubnet1', 'subnet-08a50ae7e49889508'),
-          ec2.Subnet.fromSubnetId(this, 'PrivateSubnet2', 'subnet-0fc698411d47497d8')
-        ]
-      },
-      securityGroups: props?.lambdaSecurityGroup ? [props.lambdaSecurityGroup] : undefined,
-      environment: {
-        DB_HOST: '',
-        DB_PORT: '',
-        DB_NAME: '',
-        DB_USER: '',
-        DB_PASSWORD: ''
-      }
-    });
+    // V1 Lambda removed - keeping code files
 
     // V2 Lambda Function with DynamoDB
     const goLambdaV2 = new lambda.Function(this, 'GolangUploadApiV2', {
@@ -149,36 +124,11 @@ export class ApiLambdaStack extends cdk.Stack {
     });
 
     // API Gateway integrations
-    const goIntegration = new apigateway.LambdaIntegration(goLambda);
     const goV2Integration = new apigateway.LambdaIntegration(goLambdaV2);
 
-    // Register endpoint without authorization
-    const registerResource = api.root.addResource('register');
-    registerResource.addMethod('POST', goIntegration, {
-      apiKeyRequired: false
-    });
-
-    // Students register endpoint without authorization
+    // Root resources
     const studentsResource = api.root.addResource('students');
-    const studentsRegisterResource = studentsResource.addResource('register');
-    studentsRegisterResource.addMethod('POST', goIntegration, {
-      apiKeyRequired: false
-    });
-
-    // Quiz submit endpoint with authorization
     const quizResource = api.root.addResource('quiz');
-    const quizSubmitResource = quizResource.addResource('submit');
-    quizSubmitResource.addMethod('POST', goIntegration, {
-      authorizer: authorizer,
-      apiKeyRequired: false
-    });
-
-    // Quiz delete endpoint with authorization
-    const quizDeleteResource = quizResource.addResource('delete');
-    quizDeleteResource.addMethod('DELETE', goIntegration, {
-      authorizer: authorizer,
-      apiKeyRequired: false
-    });
 
     // V2 routes with DynamoDB
     const v2Resource = api.root.addResource('v2');
@@ -199,23 +149,9 @@ export class ApiLambdaStack extends cdk.Stack {
       apiKeyRequired: false
     });
 
-    // All other routes with Firebase authorization
-    const proxyResource = api.root.addProxy({
-      defaultIntegration: goIntegration,
-      anyMethod: false
-    });
-    
-    proxyResource.addMethod('ANY', goIntegration, {
-      authorizer: authorizer,
-      apiKeyRequired: false
-    });
+    // Root proxy removed
 
     // Restrict Lambda access to API Gateway only
-    goLambda.addPermission('ApiGatewayInvoke', {
-      principal: new iam.ServicePrincipal('apigateway.amazonaws.com'),
-      sourceArn: api.arnForExecuteApi()
-    });
-
     goLambdaV2.addPermission('ApiGatewayInvokeV2', {
       principal: new iam.ServicePrincipal('apigateway.amazonaws.com'),
       sourceArn: api.arnForExecuteApi()
