@@ -144,6 +144,9 @@ func HandleStudentProgressV2(request events.APIGatewayProxyRequest) (events.APIG
 		percentageCount[category]++
 		log.Printf("📊 Added %s percentage: %f (total: %f, count: %d)", category, percentage, percentageSum[category], percentageCount[category])
 
+		// Round percentage to 1 decimal place
+		roundedPercentage := float64(int(percentage*10+0.5)) / 10
+		
 		// Add to individual tests
 		test := TestScore{
 			QuizName:      quizName,
@@ -152,9 +155,9 @@ func HandleStudentProgressV2(request events.APIGatewayProxyRequest) (events.APIG
 			WrongCount:    wrongCount,
 			SkippedCount:  skippedCount,
 			TotalCount:    totalCount,
-			Percentage:    percentage,
+			Percentage:    roundedPercentage,
 			TotalAttempts: attemptNumber,
-			LatestScore:   percentage,
+			LatestScore:   roundedPercentage,
 			AttemptedAt:   attemptedAt,
 		}
 		individualTests[category] = append(individualTests[category], test)
