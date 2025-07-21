@@ -1,5 +1,5 @@
 import * as cdk from 'aws-cdk-lib';
-import * as rds from 'aws-cdk-lib/aws-rds';
+
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
@@ -115,36 +115,11 @@ export class DatabaseStack extends cdk.Stack {
       subnets: [{ subnetType: ec2.SubnetType.PRIVATE_ISOLATED }]
     });
 
-    // PostgreSQL Database (Free Tier)
-    const database = new rds.DatabaseInstance(this, 'PostgresDb', {
-      engine: rds.DatabaseInstanceEngine.POSTGRES,
-      instanceType: ec2.InstanceType.of(ec2.InstanceClass.T3, ec2.InstanceSize.MICRO),
-      vpc: this.vpc,
-      securityGroups: [this.dbSecurityGroup],
-      databaseName: 'mcqdb',
-      instanceIdentifier: 'mcq-db',
-      credentials: rds.Credentials.fromGeneratedSecret('postgres'),
-      allocatedStorage: 20,
-      storageType: rds.StorageType.GP2,
-      deleteAutomatedBackups: true,
-      backupRetention: cdk.Duration.days(7),
-      deletionProtection: false,
-      publiclyAccessible: false,
-      vpcSubnets: {
-        subnetType: ec2.SubnetType.PRIVATE_ISOLATED
-      }
-    });
 
 
 
-    // Outputs
-    new cdk.CfnOutput(this, 'DatabaseEndpoint', {
-      value: database.instanceEndpoint.hostname
-    });
 
-    new cdk.CfnOutput(this, 'DatabasePort', {
-      value: database.instanceEndpoint.port.toString()
-    });
+
 
     new cdk.CfnOutput(this, 'BastionHostPublicIp', {
       value: bastion.instancePublicIp

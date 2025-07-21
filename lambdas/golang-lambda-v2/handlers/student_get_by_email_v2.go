@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"strings"
+	"time"
 
 	"github.com/aws/aws-lambda-go/events"
 )
@@ -11,7 +12,7 @@ import (
 func HandleStudentGetByEmailV2(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	email := request.QueryStringParameters["email"]
 	if email == "" {
-		return CreateErrorResponse(400, "Missing 'email' parameter"), nil
+		return CreateErrorResponse(400, "Missing 'email' query parameter"), nil
 	}
 
 	email = strings.ToLower(email)
@@ -27,16 +28,23 @@ func HandleStudentGetByEmailV2(request events.APIGatewayProxyRequest) (events.AP
 		return CreateErrorResponse(404, "Student not found"), nil
 	}
 
-	// Format response to match v1 structure
+	// Format response exactly like v1
 	studentData := map[string]interface{}{
-		"email":        student.Email,
-		"name":         student.Name,
-		"student_class": student.StudentClass,
-		"phone_number": student.PhoneNumber,
-		"payment_status": "PAID", // Default for migrated data
+		"id":            1, // Default ID since DynamoDB doesn't have auto-increment
+		"email":         student.Email,
+		"name":          student.Name,
+		"student_class":  student.StudentClass,
+		"phone_number":   student.PhoneNumber,
+		"sub_exp_date":   nil,
+		"updated_by":     nil,
+		"amount":         nil,
+		"payment_time":   nil,
+		"role":           nil,
+		"payment_status": "UNPAID",
+		"subjects":       []string{},
 	}
 
-	// Handle optional fields safely
+	// Handle optional fields like v1
 	if student.SubExpDate != nil {
 		if dateStr, ok := student.SubExpDate.(string); ok && dateStr != "" {
 			studentData["sub_exp_date"] = dateStr
@@ -65,24 +73,21 @@ func HandleStudentGetByEmailV2(request events.APIGatewayProxyRequest) (events.AP
 		}
 	}
 
-	// Add subjects based on student class (simplified)
-	if strings.Contains(student.StudentClass, "BIPC") {
-		studentData["subjects"] = []string{
-			student.StudentClass + "-PHYSICS",
-			student.StudentClass + "-BOTANY", 
-			student.StudentClass + "-ZOOLOGY",
-			student.StudentClass + "-CHEMISTRY",
-			student.StudentClass + "-EAPCET",
-			student.StudentClass + "-NEET",
+	// Calculate payment status like v1
+	today := time.Now().Format("2006-01-02")
+	if student.SubExpDate != nil {
+		if dateStr, ok := student.SubExpDate.(string); ok && dateStr != "" {
+			if dateStr >= today {
+				studentData["payment_status"] = "PAID"
+			}
 		}
-	} else if strings.Contains(student.StudentClass, "MPC") {
-		studentData["subjects"] = []string{
-			student.StudentClass + "-PHYSICS",
-			student.StudentClass + "-MATHS1A",
-			student.StudentClass + "-MATHS1B", 
-			student.StudentClass + "-CHEMISTRY",
-			student.StudentClass + "-EAMCET",
-			student.StudentClass + "-JEEMAINS",
+	}
+
+	// Add subjects like v1 using VALID_CATEGORIES
+	classPrefix := student.StudentClass
+	for _, category := range VALID_CATEGORIES {
+		if strings.HasPrefix(category, classPrefix) {
+			studentData["subjects"] = append(studentData["subjects"].([]string), category)
 		}
 	}
 

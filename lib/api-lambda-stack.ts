@@ -91,45 +91,7 @@ export class ApiLambdaStack extends cdk.Stack {
       securityGroups: props?.lambdaSecurityGroup ? [props.lambdaSecurityGroup] : undefined
     });
 
-    // Migration Lambda
-    const migrationLambda = new lambda.Function(this, 'MigrationLambda', {
-      functionName: 'data-migration',
-      runtime: lambda.Runtime.NODEJS_20_X,
-      handler: 'index.handler',
-      code: lambda.Code.fromAsset('lambdas/migration-lambda'),
-      timeout: cdk.Duration.minutes(15),
-      memorySize: 1024,
-      vpc: props?.vpc,
-      vpcSubnets: {
-        subnets: [
-          ec2.Subnet.fromSubnetId(this, 'MigrationSubnet1', 'subnet-08a50ae7e49889508'),
-          ec2.Subnet.fromSubnetId(this, 'MigrationSubnet2', 'subnet-0fc698411d47497d8')
-        ]
-      },
-      securityGroups: props?.lambdaSecurityGroup ? [props.lambdaSecurityGroup] : undefined,
-      environment: {
-        DB_HOST: 'mcq-db.cxseo0q6o4fc.us-east-1.rds.amazonaws.com',
-        DB_PORT: '5432',
-        DB_NAME: 'mcqdb',
-        DB_USER: 'postgres',
-        DB_PASSWORD: 'hy6HCu,aNANvIkX3jnqdBNxiPku^tR'
-      }
-    });
-
-    // Add DynamoDB permissions to Migration Lambda
-    migrationLambda.addToRolePolicy(new iam.PolicyStatement({
-      effect: iam.Effect.ALLOW,
-      actions: [
-        'dynamodb:PutItem',
-        'dynamodb:BatchWriteItem'
-      ],
-      resources: [
-        'arn:aws:dynamodb:*:*:table/quiz_questions',
-        'arn:aws:dynamodb:*:*:table/students', 
-        'arn:aws:dynamodb:*:*:table/student_quiz_attempts',
-        'arn:aws:dynamodb:*:*:table/student_quizzes'
-      ]
-    }));
+    // Migration Lambda removed
 
     // Add DynamoDB permissions to V2 Lambda
     goLambdaV2.addToRolePolicy(new iam.PolicyStatement({
