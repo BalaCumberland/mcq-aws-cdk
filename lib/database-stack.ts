@@ -1,8 +1,6 @@
 import * as cdk from 'aws-cdk-lib';
 
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
-import * as iam from 'aws-cdk-lib/aws-iam';
-import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import { Construct } from 'constructs';
 
@@ -59,24 +57,11 @@ export class DatabaseStack extends cdk.Stack {
       'Lambda access to database'
     );
 
-    // Bastion host removed
-
-
-
-
-
     // DynamoDB VPC Endpoint for private subnet access
     this.vpc.addGatewayEndpoint('DynamoDbEndpoint', {
       service: ec2.GatewayVpcEndpointAwsService.DYNAMODB,
       subnets: [{ subnetType: ec2.SubnetType.PRIVATE_ISOLATED }]
     });
 
-
-
-
-
-
-
-    // Bastion host output removed
   }
 }
