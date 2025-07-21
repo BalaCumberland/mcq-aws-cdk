@@ -76,7 +76,7 @@ exports.handler = async (event) => {
         console.log('✅ Policy generated successfully');
         return policy;
     } catch (error) {
-        console.log(`❌ Error details:`, error);
+        console.log(`❌ Error details: `, error);
         console.log(`❌ Token verification failed: ${error.message}`);
         throw new Error('Unauthorized');
     }
