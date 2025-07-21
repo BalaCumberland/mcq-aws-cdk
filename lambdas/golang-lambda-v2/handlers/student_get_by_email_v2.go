@@ -10,12 +10,14 @@ import (
 )
 
 func HandleStudentGetByEmailV2(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	email := request.QueryStringParameters["email"]
-	if email == "" {
-		return CreateErrorResponse(400, "Missing 'email' query parameter"), nil
+	// Get email from authenticated user context
+	userEmail, err := GetUserFromContext(request)
+	if err != nil {
+		log.Printf("❌ Failed to get user from context: %v", err)
+		return CreateErrorResponse(401, "Unauthorized"), nil
 	}
 
-	email = strings.ToLower(email)
+	email := strings.ToLower(userEmail)
 	log.Printf("📌 Fetching student: %s", email)
 
 	student, err := GetStudentFromDynamoDB(email)
