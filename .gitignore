@@ -1,27 +1,48 @@
-*.js
-!jest.config.js
-*.d.ts
-node_modules
+# CDK output directories
+cdk.out/
+cdk-out*/
+.cdk.staging/
 
-# CDK asset staging directory
-.cdk.staging
-cdk.out
+# Build artifacts
+*.zip
+bootstrap
+function.zip
+dist/
+build/
 
-# Go build artifacts
-lambdas/golang-lambda/bootstrap
-lambdas/golang-lambda/function.zip
-lambdas/authorizer-lambda/function.zip
-lambdas/authorizer-lambda/deployment/
+# Node.js
+node_modules/
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+.npm/
 
-# IDE
-.vscode/
-.idea/
+# Go
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+go.work
 
-# OS
+# Temporary files
+*.swp
+*.swo
+*~
 .DS_Store
-Thumbs.db
-lambdas/migration-lambda/function.zip
-lambdas/golang-lambda-v2/function.zip
-.gitignore
-.gitignore
-lambdas/golang-lambda-v2/bootstrap
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# IDE files
+.idea/
+.vscode/
+*.sublime-workspace
+*.sublime-project
+.project
+.classpath
+.settings/

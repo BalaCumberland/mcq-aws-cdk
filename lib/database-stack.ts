@@ -59,51 +59,7 @@ export class DatabaseStack extends cdk.Stack {
       'Lambda access to database'
     );
 
-    // Security Group for Bastion Host
-    const bastionSecurityGroup = new ec2.SecurityGroup(this, 'BastionSecurityGroup', {
-      vpc: this.vpc,
-      description: 'Security group for bastion host'
-    });
-
-    // No SSH access needed - using Session Manager
-
-    // Allow bastion to access database
-    this.dbSecurityGroup.addIngressRule(
-      ec2.Peer.securityGroupId(bastionSecurityGroup.securityGroupId),
-      ec2.Port.tcp(5432),
-      'Bastion access to database'
-    );
-
-    // Bastion Host with Session Manager
-    const bastion = new ec2.Instance(this, 'BastionHost', {
-      vpc: this.vpc,
-      instanceType: ec2.InstanceType.of(ec2.InstanceClass.T3, ec2.InstanceSize.MICRO),
-      machineImage: ec2.MachineImage.latestAmazonLinux2023(),
-      securityGroup: bastionSecurityGroup,
-      vpcSubnets: {
-        subnetType: ec2.SubnetType.PUBLIC
-      },
-      role: new iam.Role(this, 'BastionRole', {
-        assumedBy: new iam.ServicePrincipal('ec2.amazonaws.com'),
-        managedPolicies: [
-          iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonSSMManagedInstanceCore')
-        ],
-        inlinePolicies: {
-          S3Access: new iam.PolicyDocument({
-            statements: [
-              new iam.PolicyStatement({
-                effect: iam.Effect.ALLOW,
-                actions: ['s3:GetObject', 's3:ListBucket'],
-                resources: [
-                  props?.sqlBackupBucket?.bucketArn || '',
-                  `${props?.sqlBackupBucket?.bucketArn || ''}/*`
-                ]
-              })
-            ]
-          })
-        }
-      })
-    });
+    // Bastion host removed
 
 
 
@@ -121,8 +77,6 @@ export class DatabaseStack extends cdk.Stack {
 
 
 
-    new cdk.CfnOutput(this, 'BastionHostPublicIp', {
-      value: bastion.instancePublicIp
-    });
+    // Bastion host output removed
   }
 }
