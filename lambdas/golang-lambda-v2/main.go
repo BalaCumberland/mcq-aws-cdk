@@ -45,6 +45,8 @@ func lambdaHandler(request events.APIGatewayProxyRequest) (events.APIGatewayProx
 		return handlers.HandleStudentProgressV2(request)
 	case "/v2/quiz/result":
 		return handlers.HandleQuizResultV2(request)
+	case "/v2/students/upgrade-class":
+		return handlers.HandleStudentClassUpgradeV2(request)
 	default:
 		log.Printf("❌ Invalid API Path: %s", request.Path)
 		return events.APIGatewayProxyResponse{

@@ -93,6 +93,9 @@ func HandleStudentGetByEmailV2(request events.APIGatewayProxyRequest) (events.AP
 		}
 	}
 
+	// Add upgradable classes
+	studentData["upgradable_classes"] = getUpgradableClasses(student.StudentClass)
+
 	responseJSON, _ := json.Marshal(studentData)
 	return events.APIGatewayProxyResponse{
 		StatusCode: 200,
