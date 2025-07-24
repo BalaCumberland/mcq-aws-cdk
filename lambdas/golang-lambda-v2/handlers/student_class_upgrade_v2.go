@@ -6,6 +6,8 @@ import (
 	"strings"
 
 	"github.com/aws/aws-lambda-go/events"
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/service/dynamodb"
 )
 
 type ClassUpgradeRequest struct {
@@ -51,6 +53,30 @@ func HandleStudentClassUpgradeV2(request events.APIGatewayProxyRequest) (events.
 	// Validate upgrade path
 	if !isValidUpgrade(currentClass, newClass) {
 		return CreateErrorResponse(400, "Invalid class upgrade path"), nil
+	}
+
+	// Delete all quiz attempts for this student
+	log.Printf("🗑️ Deleting all quiz attempts for student: %s", email)
+	queryResult, err := dynamoClient.Query(&dynamodb.QueryInput{
+		TableName: aws.String("student_quiz_attempts"),
+		KeyConditionExpression: aws.String("email = :email"),
+		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
+			":email": {S: aws.String(email)},
+		},
+	})
+
+	if err == nil {
+		for _, item := range queryResult.Items {
+			if quizName := item["quiz_name"]; quizName != nil && quizName.S != nil {
+				_, _ = dynamoClient.DeleteItem(&dynamodb.DeleteItemInput{
+					TableName: aws.String("student_quiz_attempts"),
+					Key: map[string]*dynamodb.AttributeValue{
+						"email": {S: aws.String(email)},
+						"quiz_name": {S: quizName.S},
+					},
+				})
+			}
+		}
 	}
 
 	// Update student class
