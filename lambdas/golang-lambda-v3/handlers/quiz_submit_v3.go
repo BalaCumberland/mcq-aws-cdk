@@ -118,13 +118,12 @@ func HandleQuizSubmitV3(request events.APIGatewayProxyRequest) (events.APIGatewa
 	}
 
 	response := map[string]interface{}{
-		"message": "Quiz submitted successfully",
 		"correctCount": correctCount,
 		"wrongCount": wrongCount,
 		"skippedCount": skippedCount,
 		"totalCount": totalCount,
 		"percentage": roundedPercentage,
-		"attemptNumber": attemptNumber,
+		"results": results,
 	}
 
 	responseJSON, _ := json.Marshal(response)

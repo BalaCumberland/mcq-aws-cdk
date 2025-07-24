@@ -29,11 +29,13 @@ func lambdaHandler(request events.APIGatewayProxyRequest) (events.APIGatewayProx
 		return handlers.HandleStudentRegisterV3(request)
 	case "/v3/students/get":
 		return handlers.HandleStudentGetV3(request)
+	case "/v3/students/lookup":
+		return handlers.HandleStudentLookupV3(request)
 	case "/v3/students/update":
 		return handlers.HandleStudentUpdateV3(request)
 	case "/v3/students/progress":
 		return handlers.HandleStudentProgressV3(request)
-	case "/v3/students/upgrade-class":
+	case "/v3/students/class-upgrade":
 		return handlers.HandleStudentClassUpgradeV3(request)
 	case "/v3/quiz/get-by-name":
 		return handlers.HandleQuizGetByNameV3(request)

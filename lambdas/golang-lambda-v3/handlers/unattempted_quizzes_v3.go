@@ -7,7 +7,6 @@ import (
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
-	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 )
 
 func HandleUnattemptedQuizzesV3(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
@@ -49,7 +48,7 @@ func HandleUnattemptedQuizzesV3(request events.APIGatewayProxyRequest) (events.A
 	}
 
 	// Get all available quizzes for enrolled subjects
-	var unattemptedQuizzes []QuizItem
+	var unattemptedQuizzes []string
 	for _, category := range enrolledSubjects {
 		scanResult, err := dynamoClient.Scan(&dynamodb.ScanInput{
 			TableName: aws.String("quiz_questions"),
@@ -62,18 +61,17 @@ func HandleUnattemptedQuizzesV3(request events.APIGatewayProxyRequest) (events.A
 		if err == nil {
 			for _, item := range scanResult.Items {
 				if quizName := item["quiz_name"]; quizName != nil && quizName.S != nil {
-					if !attemptedQuizzes[*quizName.S] {
-						var quiz QuizItem
-						if err := dynamodbattribute.UnmarshalMap(item, &quiz); err == nil {
-							unattemptedQuizzes = append(unattemptedQuizzes, quiz)
-						}
-					}
+					unattemptedQuizzes = append(unattemptedQuizzes, *quizName.S)
 				}
 			}
 		}
 	}
 
-	responseJSON, _ := json.Marshal(unattemptedQuizzes)
+	response := map[string]interface{}{
+		"unattempted_quizzes": unattemptedQuizzes,
+	}
+
+	responseJSON, _ := json.Marshal(response)
 	return events.APIGatewayProxyResponse{
 		StatusCode: 200,
 		Headers:    GetCORSHeaders(),

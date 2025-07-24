@@ -94,29 +94,50 @@ export class ApiLambdaStackV3 extends cdk.Stack {
 
     // V3 endpoints
     const v3Resource = api.root.addResource('v3');
-    
-    // Students endpoints
     const v3StudentsResource = v3Resource.addResource('students');
+    const v3QuizResource = v3Resource.addResource('quiz');
+    const v3UploadResource = v3Resource.addResource('upload');
     
-    // Register endpoint (no auth required)
-    const v3StudentsRegisterResource = v3StudentsResource.addResource('register');
-    v3StudentsRegisterResource.addMethod('POST', goV3Integration, {
-      apiKeyRequired: false
-    });
+    // V2 compatibility endpoints
+    const v2Resource = api.root.addResource('v2');
+    const v2StudentsResource = v2Resource.addResource('students');
+    const v2QuizResource = v2Resource.addResource('quiz');
+    const v2UploadResource = v2Resource.addResource('upload');
 
-    // Get student endpoint (auth required)
-    const v3StudentsGetResource = v3StudentsResource.addResource('get');
-    v3StudentsGetResource.addMethod('GET', goV3Integration, {
-      authorizer: authorizer,
-      apiKeyRequired: false
-    });
+    // V3 Students endpoints
+    v3StudentsResource.addResource('register').addMethod('POST', goV3Integration, { apiKeyRequired: false });
+    v3StudentsResource.addResource('get').addMethod('GET', goV3Integration, { authorizer: authorizer, apiKeyRequired: false });
+    v3StudentsResource.addResource('lookup').addMethod('GET', goV3Integration, { authorizer: authorizer, apiKeyRequired: false });
+    v3StudentsResource.addResource('update').addMethod('POST', goV3Integration, { authorizer: authorizer, apiKeyRequired: false });
+    v3StudentsResource.addResource('progress').addMethod('GET', goV3Integration, { authorizer: authorizer, apiKeyRequired: false });
+    v3StudentsResource.addResource('class-upgrade').addMethod('POST', goV3Integration, { authorizer: authorizer, apiKeyRequired: false });
 
-    // Progress endpoint (auth required)
-    const v3StudentsProgressResource = v3StudentsResource.addResource('progress');
-    v3StudentsProgressResource.addMethod('GET', goV3Integration, {
-      authorizer: authorizer,
-      apiKeyRequired: false
-    });
+    // V3 Quiz endpoints
+    v3QuizResource.addResource('get-by-name').addMethod('GET', goV3Integration, { authorizer: authorizer, apiKeyRequired: false });
+    v3QuizResource.addResource('submit').addMethod('POST', goV3Integration, { authorizer: authorizer, apiKeyRequired: false });
+    v3QuizResource.addResource('unattempted-quizzes').addMethod('GET', goV3Integration, { authorizer: authorizer, apiKeyRequired: false });
+    v3QuizResource.addResource('delete').addMethod('DELETE', goV3Integration, { authorizer: authorizer, apiKeyRequired: false });
+    v3QuizResource.addResource('result').addMethod('GET', goV3Integration, { authorizer: authorizer, apiKeyRequired: false });
+
+    // V3 Upload endpoints
+    v3UploadResource.addResource('questions').addMethod('POST', goV3Integration, { authorizer: authorizer, apiKeyRequired: false });
+
+    // V2 Students endpoints
+    v2StudentsResource.addResource('register').addMethod('POST', goV3Integration, { authorizer: authorizer, apiKeyRequired: false });
+    v2StudentsResource.addResource('get-by-email').addMethod('GET', goV3Integration, { authorizer: authorizer, apiKeyRequired: false });
+    v2StudentsResource.addResource('update').addMethod('POST', goV3Integration, { authorizer: authorizer, apiKeyRequired: false });
+    v2StudentsResource.addResource('progress').addMethod('GET', goV3Integration, { authorizer: authorizer, apiKeyRequired: false });
+    v2StudentsResource.addResource('upgrade-class').addMethod('POST', goV3Integration, { authorizer: authorizer, apiKeyRequired: false });
+
+    // V2 Quiz endpoints
+    v2QuizResource.addResource('get-by-name').addMethod('GET', goV3Integration, { authorizer: authorizer, apiKeyRequired: false });
+    v2QuizResource.addResource('submit').addMethod('POST', goV3Integration, { authorizer: authorizer, apiKeyRequired: false });
+    v2QuizResource.addResource('unattempted-quizzes').addMethod('GET', goV3Integration, { authorizer: authorizer, apiKeyRequired: false });
+    v2QuizResource.addResource('delete').addMethod('DELETE', goV3Integration, { authorizer: authorizer, apiKeyRequired: false });
+    v2QuizResource.addResource('result').addMethod('GET', goV3Integration, { authorizer: authorizer, apiKeyRequired: false });
+
+    // V2 Upload endpoints
+    v2UploadResource.addResource('questions').addMethod('POST', goV3Integration, { authorizer: authorizer, apiKeyRequired: false });
 
     // Output API URL
     new cdk.CfnOutput(this, 'ApiUrlV3', {

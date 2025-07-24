@@ -44,18 +44,20 @@ exports.handler = async (event) => {
             phoneNumber: decodedToken.phone_number || ''
         };
         
-        // Only for /v3/students/update path
-        if (event.methodArn.includes('/v3/students/update')) {
-            const email = event.queryStringParameters?.email;
-            const phoneNumber = event.queryStringParameters?.phoneNumber;
+        // For /v3/students/update and /v3/students/lookup paths
+        if (event.methodArn.includes('/v3/students/update') || event.methodArn.includes('/v3/students/lookup')) {
+            const identifier = event.queryStringParameters?.identifier;
             
-            if (email || phoneNumber) {
-                const targetUID = await getUid(email || phoneNumber);
+            if (identifier) {
+                const targetUID = await getUid(identifier);
                 if (targetUID) {
                     context.targetUID = targetUID;
                 }
             }
         }
+        
+        // Allow access to all V3 endpoints
+        const resourceArn = event.methodArn.split('/').slice(0, -2).join('/') + '/*';
         
         return {
             principalId: decodedToken.uid,
@@ -65,7 +67,7 @@ exports.handler = async (event) => {
                     {
                         Action: 'execute-api:Invoke',
                         Effect: 'Allow',
-                        Resource: event.methodArn
+                        Resource: resourceArn
                     }
                 ]
             },
