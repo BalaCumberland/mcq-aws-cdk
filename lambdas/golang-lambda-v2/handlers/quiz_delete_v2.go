@@ -24,6 +24,23 @@ func HandleQuizDeleteV2(request events.APIGatewayProxyRequest) (events.APIGatewa
 
 	log.Printf("📌 Deleting quiz: %s", quizName)
 
+	// Check if quiz exists first
+	getResult, err := dynamoClient.GetItem(&dynamodb.GetItemInput{
+		TableName: aws.String("quiz_questions"),
+		Key: map[string]*dynamodb.AttributeValue{
+			"quiz_name": {S: aws.String(quizName)},
+		},
+	})
+
+	if err != nil {
+		log.Printf("❌ Error checking quiz: %v", err)
+		return CreateErrorResponse(500, "Internal Server Error"), nil
+	}
+
+	if getResult.Item == nil {
+		return CreateErrorResponse(404, "Quiz not found"), nil
+	}
+
 	// Delete quiz
 	_, err = dynamoClient.DeleteItem(&dynamodb.DeleteItemInput{
 		TableName: aws.String("quiz_questions"),
