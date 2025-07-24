@@ -1,0 +1,127 @@
+import * as cdk from 'aws-cdk-lib';
+import * as lambda from 'aws-cdk-lib/aws-lambda';
+import * as apigateway from 'aws-cdk-lib/aws-apigateway';
+import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
+import * as iam from 'aws-cdk-lib/aws-iam';
+import { Construct } from 'constructs';
+
+export class ApiLambdaStackV3 extends cdk.Stack {
+  constructor(scope: Construct, id: string, props?: cdk.StackProps) {
+    super(scope, id, props);
+
+    // Create DynamoDB tables for V3
+    const studentsTableV3 = new dynamodb.Table(this, 'StudentsTableV3', {
+      tableName: 'students_v3',
+      partitionKey: { name: 'uid', type: dynamodb.AttributeType.STRING },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
+    });
+
+    const attemptsTableV3 = new dynamodb.Table(this, 'AttemptsTableV3', {
+      tableName: 'student_quiz_attempts_v3',
+      partitionKey: { name: 'uid', type: dynamodb.AttributeType.STRING },
+      sortKey: { name: 'quiz_name', type: dynamodb.AttributeType.STRING },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
+    });
+
+    // Create V3 Authorizer Lambda
+    const authorizerV3 = new lambda.Function(this, 'AuthorizerV3', {
+      runtime: lambda.Runtime.NODEJS_18_X,
+      handler: 'index.handler',
+      code: lambda.Code.fromAsset('lambdas/authorizer-lambda-v3'),
+      environment: {
+        FIREBASE_PROJECT_ID: process.env.FIREBASE_PROJECT_ID || '',
+        FIREBASE_PRIVATE_KEY_ID: process.env.FIREBASE_PRIVATE_KEY_ID || '',
+        FIREBASE_PRIVATE_KEY: process.env.FIREBASE_PRIVATE_KEY || '',
+        FIREBASE_CLIENT_EMAIL: process.env.FIREBASE_CLIENT_EMAIL || '',
+        FIREBASE_CLIENT_ID: process.env.FIREBASE_CLIENT_ID || '',
+        FIREBASE_CLIENT_CERT_URL: process.env.FIREBASE_CLIENT_CERT_URL || '',
+      },
+      timeout: cdk.Duration.seconds(30),
+    });
+
+    // Create V3 Go Lambda
+    const goLambdaV3 = new lambda.Function(this, 'GolangUploadApiV3', {
+      runtime: lambda.Runtime.PROVIDED_AL2023,
+      handler: 'bootstrap',
+      code: lambda.Code.fromAsset('lambdas/golang-lambda-v3'),
+      timeout: cdk.Duration.seconds(300),
+      memorySize: 512,
+      architecture: lambda.Architecture.ARM_64,
+      environment: {
+        AWS_LAMBDA_EXEC_WRAPPER: '/opt/otel-instrument',
+      },
+      tracing: lambda.Tracing.ACTIVE,
+    });
+
+    // Grant DynamoDB permissions
+    studentsTableV3.grantReadWriteData(goLambdaV3);
+    attemptsTableV3.grantReadWriteData(goLambdaV3);
+    
+    // Grant access to existing quiz_questions table
+    goLambdaV3.addToRolePolicy(new iam.PolicyStatement({
+      effect: iam.Effect.ALLOW,
+      actions: [
+        'dynamodb:GetItem',
+        'dynamodb:PutItem',
+        'dynamodb:UpdateItem',
+        'dynamodb:DeleteItem',
+        'dynamodb:Query',
+        'dynamodb:Scan'
+      ],
+      resources: ['arn:aws:dynamodb:us-east-1:*:table/quiz_questions']
+    }));
+
+    // Create API Gateway
+    const api = new apigateway.RestApi(this, 'McqApiV3', {
+      restApiName: 'MCQ Service V3',
+      description: 'This service serves MCQ application V3.',
+      defaultCorsPreflightOptions: {
+        allowOrigins: apigateway.Cors.ALL_ORIGINS,
+        allowMethods: apigateway.Cors.ALL_METHODS,
+        allowHeaders: ['Content-Type', 'X-Amz-Date', 'Authorization', 'X-Api-Key'],
+      },
+    });
+
+    // Create authorizer
+    const authorizer = new apigateway.TokenAuthorizer(this, 'FirebaseAuthorizerV3', {
+      handler: authorizerV3,
+    });
+
+    // Create Lambda integration
+    const goV3Integration = new apigateway.LambdaIntegration(goLambdaV3);
+
+    // V3 endpoints
+    const v3Resource = api.root.addResource('v3');
+    
+    // Students endpoints
+    const v3StudentsResource = v3Resource.addResource('students');
+    
+    // Register endpoint (no auth required)
+    const v3StudentsRegisterResource = v3StudentsResource.addResource('register');
+    v3StudentsRegisterResource.addMethod('POST', goV3Integration, {
+      apiKeyRequired: false
+    });
+
+    // Get student endpoint (auth required)
+    const v3StudentsGetResource = v3StudentsResource.addResource('get');
+    v3StudentsGetResource.addMethod('GET', goV3Integration, {
+      authorizer: authorizer,
+      apiKeyRequired: false
+    });
+
+    // Progress endpoint (auth required)
+    const v3StudentsProgressResource = v3StudentsResource.addResource('progress');
+    v3StudentsProgressResource.addMethod('GET', goV3Integration, {
+      authorizer: authorizer,
+      apiKeyRequired: false
+    });
+
+    // Output API URL
+    new cdk.CfnOutput(this, 'ApiUrlV3', {
+      value: api.url,
+      description: 'URL of the API Gateway V3',
+    });
+  }
+}

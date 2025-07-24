@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log"
 
-	"go-upload-excel/handlers"
+	"go-upload-excel-v3/handlers"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
@@ -12,7 +12,7 @@ import (
 
 func lambdaHandler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
-	log.Printf("🚀 Lambda function started")
+	log.Printf("🚀 Lambda V3 function started")
 	log.Printf("📌 Received request: Path = %s, Method = %s", request.Path, request.HTTPMethod)
 	log.Printf("Path: %s, Resource: %s, Stage: %s", request.Path, request.Resource, request.RequestContext.Stage)
 
@@ -25,26 +25,28 @@ func lambdaHandler(request events.APIGatewayProxyRequest) (events.APIGatewayProx
 	}
 
 	switch request.Path {
-	case "/upload/questions":
-		return handlers.HandleQuizUpload(request)
-	case "/students/update":
-		return handlers.HandleStudentUpdate(request)
-	case "/students/register":
-		return handlers.HandleStudentRegister(request)
-	case "/students/get-by-email":
-		return handlers.HandleStudentGetByEmail(request)
-	case "/quiz/unattempted-quizzes":
-		return handlers.HandleUnattemptedQuizzes(request)
-	case "/quiz/get-by-name":
-		return handlers.HandleQuizGetByName(request)
-	case "/quiz/submit":
-		return handlers.HandleQuizSubmit(request)
-	case "/quiz/delete":
-		return handlers.HandleQuizDelete(request)
-	case "/students/progress":
-		return handlers.HandleStudentProgress(request)
-	case "/quiz/result":
-		return handlers.HandleQuizResult(request)
+	case "/v3/students/register":
+		return handlers.HandleStudentRegisterV3(request)
+	case "/v3/students/get":
+		return handlers.HandleStudentGetV3(request)
+	case "/v3/students/update":
+		return handlers.HandleStudentUpdateV3(request)
+	case "/v3/students/progress":
+		return handlers.HandleStudentProgressV3(request)
+	case "/v3/students/upgrade-class":
+		return handlers.HandleStudentClassUpgradeV3(request)
+	case "/v3/quiz/get-by-name":
+		return handlers.HandleQuizGetByNameV3(request)
+	case "/v3/quiz/submit":
+		return handlers.HandleQuizSubmitV3(request)
+	case "/v3/quiz/unattempted-quizzes":
+		return handlers.HandleUnattemptedQuizzesV3(request)
+	case "/v3/upload/questions":
+		return handlers.HandleQuizUploadV3(request)
+	case "/v3/quiz/delete":
+		return handlers.HandleQuizDeleteV3(request)
+	case "/v3/quiz/result":
+		return handlers.HandleQuizResultV3(request)
 	default:
 		log.Printf("❌ Invalid API Path: %s", request.Path)
 		return events.APIGatewayProxyResponse{
@@ -56,6 +58,6 @@ func lambdaHandler(request events.APIGatewayProxyRequest) (events.APIGatewayProx
 }
 
 func main() {
-	log.Printf("🚀 Starting Lambda function...")
+	log.Printf("🚀 Starting Lambda V3 function...")
 	lambda.Start(lambdaHandler)
 }

@@ -12,14 +12,18 @@ import (
 	"strings"
 
 	"github.com/aws/aws-lambda-go/events"
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/service/dynamodb"
+	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 	"github.com/xuri/excelize/v2"
 )
 
-func HandleQuizUpload(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	// Extract query parameters
-	for k, v := range request.Headers {
-		fmt.Printf("🔍 Header [%s] = %s\n", k, v)
+func HandleQuizUploadV3(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+	_, err := CheckAdminRole(request)
+	if err != nil {
+		return CreateErrorResponse(403, err.Error()), nil
 	}
+
 	queryParams := request.QueryStringParameters
 	category := queryParams["category"]
 	durationStr := queryParams["duration"]
@@ -34,18 +38,15 @@ func HandleQuizUpload(request events.APIGatewayProxyRequest) (events.APIGatewayP
 		return CreateErrorResponse(400, "Invalid duration format"), nil
 	}
 
-	// Parse Content-Type and extract boundary
 	contentType := request.Headers["Content-Type"]
 	if contentType == "" {
 		contentType = request.Headers["content-type"]
 	}
 	mediaType, params, err := mime.ParseMediaType(contentType)
 	if err != nil || !strings.HasPrefix(mediaType, "multipart/") {
-		fmt.Printf("❌ Content-Type: %s, MediaType: %s, Error: %v\n", contentType, mediaType, err)
 		return CreateErrorResponse(400, "Expected multipart/form-data content-type"), nil
 	}
 
-	// Decode base64 body if needed
 	var bodyBytes []byte
 	if request.IsBase64Encoded {
 		bodyBytes, err = base64.StdEncoding.DecodeString(request.Body)
@@ -56,7 +57,6 @@ func HandleQuizUpload(request events.APIGatewayProxyRequest) (events.APIGatewayP
 		bodyBytes = []byte(request.Body)
 	}
 
-	// Parse multipart form data
 	reader := multipart.NewReader(bytes.NewReader(bodyBytes), params["boundary"])
 
 	var fileContent []byte
@@ -81,31 +81,26 @@ func HandleQuizUpload(request events.APIGatewayProxyRequest) (events.APIGatewayP
 		return CreateErrorResponse(400, "File content is empty or missing"), nil
 	}
 
-	fmt.Printf("📁 File content length: %d bytes\n", len(fileContent))
-	if len(fileContent) > 0 {
-		fmt.Printf("📁 First 20 bytes: %x\n", fileContent[:20])
-	}
-
-	fmt.Printf("📁 File content length: %d bytes\n", len(fileContent))
-	fmt.Printf("📁 First 50 bytes: %x\n", fileContent[:min(50, len(fileContent))])
-
-	// Process Excel and save
-	quizData, err := processExcel(fileContent, category, duration, quizName)
+	quizData, err := processExcelV3(fileContent, category, duration, quizName)
 	if err != nil {
-		fmt.Printf("❌ Excel processing error: %v\n", err)
 		return CreateErrorResponse(500, fmt.Sprintf("Failed to process Excel file: %v", err)), nil
 	}
 
-	err = SaveToPostgres(quizData)
+	err = SaveQuizToDynamoDB(quizData)
 	if err != nil {
-		fmt.Printf("❌ Database save error: %v\n", err)
-		return CreateErrorResponse(500, fmt.Sprintf("Failed to save to database: %v", err)), nil
+		return CreateErrorResponse(500, "Internal Server Error"), nil
 	}
 
-	return CreateSuccessResponse("Quiz uploaded successfully"), nil
+	responseJSON := fmt.Sprintf(`{"message":"%s","quizName":"%s","category":"%s","duration":%v,"questionCount":%d}`, 
+		"Quiz uploaded successfully", quizData.QuizName, quizData.Category, quizData.Duration, len(quizData.Questions))
+	return events.APIGatewayProxyResponse{
+		StatusCode: 201,
+		Headers:    GetCORSHeaders(),
+		Body:       responseJSON,
+	}, nil
 }
 
-func processExcel(fileBytes []byte, category string, duration int, quizName string) (QuizData, error) {
+func processExcelV3(fileBytes []byte, category string, duration int, quizName string) (QuizData, error) {
 	f, err := excelize.OpenReader(bytes.NewReader(fileBytes))
 	if err != nil {
 		return QuizData{}, err
@@ -135,13 +130,11 @@ func processExcel(fileBytes []byte, category string, duration int, quizName stri
 
 	var questions []Question
 	for _, row := range rows[1:] {
-		correctAnswer := getCellValue(row, headerMap, "CorrectAnswer")
-		allAnswersStr := getCellValue(row, headerMap, "AllAnswers")
+		correctAnswer := getCellValueV3(row, headerMap, "CorrectAnswer")
+		allAnswersStr := getCellValueV3(row, headerMap, "AllAnswers")
 		
-		// Parse all answers from Excel
 		var allAnswers []string
 		if allAnswersStr != "" {
-			// Split all answers by ~~ delimiter (with or without spaces)
 			allAnswers = strings.Split(allAnswersStr, "~~")
 			for i := range allAnswers {
 				allAnswers[i] = strings.TrimSpace(allAnswers[i])
@@ -149,10 +142,10 @@ func processExcel(fileBytes []byte, category string, duration int, quizName stri
 		}
 		
 		questions = append(questions, Question{
-			Question:      getCellValue(row, headerMap, "Question"),
+			Question:      getCellValueV3(row, headerMap, "Question"),
 			CorrectAnswer: correctAnswer,
 			AllAnswers:    allAnswers,
-			Explanation:   getCellValue(row, headerMap, "Explanation"),
+			Explanation:   getCellValueV3(row, headerMap, "Explanation"),
 		})
 	}
 
@@ -164,10 +157,31 @@ func processExcel(fileBytes []byte, category string, duration int, quizName stri
 	}, nil
 }
 
-func getCellValue(row []string, headerMap map[string]int, key string) string {
+func getCellValueV3(row []string, headerMap map[string]int, key string) string {
 	index, exists := headerMap[key]
 	if !exists || index >= len(row) {
 		return ""
 	}
 	return row[index]
+}
+
+func SaveQuizToDynamoDB(quiz QuizData) error {
+	item := QuizItem{
+		QuizName:  quiz.QuizName,
+		Duration:  quiz.Duration,
+		Category:  quiz.Category,
+		Questions: quiz.Questions,
+	}
+
+	av, err := dynamodbattribute.MarshalMap(item)
+	if err != nil {
+		return err
+	}
+
+	_, err = dynamoClient.PutItem(&dynamodb.PutItemInput{
+		TableName: aws.String("quiz_questions"),
+		Item:      av,
+	})
+
+	return err
 }

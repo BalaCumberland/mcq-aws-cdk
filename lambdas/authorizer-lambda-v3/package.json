@@ -1,0 +1,9 @@
+{
+  "name": "authorizer-lambda-v3",
+  "version": "1.0.0",
+  "description": "Firebase authorizer for v3 API with UID only",
+  "main": "index.js",
+  "dependencies": {
+    "firebase-admin": "^11.0.0"
+  }
+}

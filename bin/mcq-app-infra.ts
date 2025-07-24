@@ -2,6 +2,7 @@
 import * as cdk from 'aws-cdk-lib';
 import { BucketsStack } from '../lib/buckets-stack';
 import { ApiLambdaStack } from '../lib/api-lambda-stack';
+import { ApiLambdaStackV3 } from '../lib/api-lambda-stack-v3';
 import { DatabaseStack } from '../lib/database-stack';
 import { DynamoDbStack } from '../lib/dynamodb-stack';
 import { AmplifyStack } from '../lib/amplify-stack';
@@ -27,6 +28,10 @@ new ApiLambdaStack(app, 'ApiLambdaStack', {
   lambdaSecurityGroup: dbStack.lambdaSecurityGroup,
   dbSecurityGroup: dbStack.dbSecurityGroup,
   sqlBackupBucket: bucketsStack.sqlBackupBucket
+});
+
+new ApiLambdaStackV3(app, 'ApiLambdaStackV3', {
+  env: { account: process.env.CDK_DEFAULT_ACCOUNT, region: 'us-east-1' }
 });
 
 new AmplifyStack(app, 'AmplifyStack', {

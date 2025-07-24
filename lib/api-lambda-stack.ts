@@ -66,6 +66,36 @@ export class ApiLambdaStack extends cdk.Stack {
       securityGroups: props?.lambdaSecurityGroup ? [props.lambdaSecurityGroup] : undefined
     });
 
+    // V3 Authorizer Lambda
+    const authorizerV3 = new lambda.Function(this, 'AuthorizerV3', {
+      runtime: lambda.Runtime.NODEJS_18_X,
+      handler: 'index.handler',
+      code: lambda.Code.fromAsset('lambdas/authorizer-lambda-v3'),
+      environment: {
+        FIREBASE_PROJECT_ID: process.env.FIREBASE_PROJECT_ID || '',
+        FIREBASE_PRIVATE_KEY_ID: process.env.FIREBASE_PRIVATE_KEY_ID || '',
+        FIREBASE_PRIVATE_KEY: process.env.FIREBASE_PRIVATE_KEY || '',
+        FIREBASE_CLIENT_EMAIL: process.env.FIREBASE_CLIENT_EMAIL || '',
+        FIREBASE_CLIENT_ID: process.env.FIREBASE_CLIENT_ID || '',
+        FIREBASE_CLIENT_CERT_URL: process.env.FIREBASE_CLIENT_CERT_URL || '',
+      },
+      timeout: cdk.Duration.seconds(30),
+    });
+
+    // V3 Go Lambda
+    const goLambdaV3 = new lambda.Function(this, 'GolangUploadApiV3', {
+      runtime: lambda.Runtime.PROVIDED_AL2023,
+      handler: 'bootstrap',
+      code: lambda.Code.fromAsset('lambdas/golang-lambda-v3'),
+      timeout: cdk.Duration.seconds(300),
+      memorySize: 512,
+      architecture: lambda.Architecture.ARM_64,
+      environment: {
+        AWS_LAMBDA_EXEC_WRAPPER: '/opt/otel-instrument',
+      },
+      tracing: lambda.Tracing.ACTIVE,
+    });
+
     // Migration Lambda removed
 
     // Add DynamoDB permissions to V2 Lambda
@@ -85,6 +115,24 @@ export class ApiLambdaStack extends cdk.Stack {
         'arn:aws:dynamodb:*:*:table/student_quiz_attempts',
         'arn:aws:dynamodb:*:*:table/student_quiz_attempts/index/*',
         'arn:aws:dynamodb:*:*:table/student_quizzes'
+      ]
+    }));
+
+    // Add DynamoDB permissions to V3 Lambda
+    goLambdaV3.addToRolePolicy(new iam.PolicyStatement({
+      effect: iam.Effect.ALLOW,
+      actions: [
+        'dynamodb:GetItem',
+        'dynamodb:PutItem',
+        'dynamodb:UpdateItem',
+        'dynamodb:DeleteItem',
+        'dynamodb:Query',
+        'dynamodb:Scan'
+      ],
+      resources: [
+        'arn:aws:dynamodb:*:*:table/quiz_questions',
+        'arn:aws:dynamodb:*:*:table/students_v3',
+        'arn:aws:dynamodb:*:*:table/student_quiz_attempts_v3'
       ]
     }));
 
@@ -117,14 +165,19 @@ export class ApiLambdaStack extends cdk.Stack {
       }
     });
 
-    // API Gateway authorizer
+    // API Gateway authorizers
     const authorizer = new apigateway.TokenAuthorizer(this, 'ApiAuthorizer', {
       handler: authorizerLambda,
       identitySource: 'method.request.header.Authorization'
     });
 
+    const firebaseAuthorizerV3 = new apigateway.TokenAuthorizer(this, 'FirebaseAuthorizerV3', {
+      handler: authorizerV3,
+    });
+
     // API Gateway integrations
     const goV2Integration = new apigateway.LambdaIntegration(goLambdaV2);
+    const goV3Integration = new apigateway.LambdaIntegration(goLambdaV3);
 
     // Root resources
     const studentsResource = api.root.addResource('students');
@@ -146,6 +199,30 @@ export class ApiLambdaStack extends cdk.Stack {
     const v2StudentsResource = v2Resource.addResource('students');
     const v2StudentsRegisterResource = v2StudentsResource.addResource('register');
     v2StudentsRegisterResource.addMethod('POST', goV2Integration, {
+      apiKeyRequired: false
+    });
+
+    // V3 routes
+    const v3Resource = api.root.addResource('v3');
+    const v3StudentsResource = v3Resource.addResource('students');
+    
+    // Register endpoint (no auth required)
+    const v3StudentsRegisterResource = v3StudentsResource.addResource('register');
+    v3StudentsRegisterResource.addMethod('POST', goV3Integration, {
+      apiKeyRequired: false
+    });
+
+    // Get student endpoint (auth required)
+    const v3StudentsGetResource = v3StudentsResource.addResource('get');
+    v3StudentsGetResource.addMethod('GET', goV3Integration, {
+      authorizer: firebaseAuthorizerV3,
+      apiKeyRequired: false
+    });
+
+    // Progress endpoint (auth required)
+    const v3StudentsProgressResource = v3StudentsResource.addResource('progress');
+    v3StudentsProgressResource.addMethod('GET', goV3Integration, {
+      authorizer: firebaseAuthorizerV3,
       apiKeyRequired: false
     });
 
