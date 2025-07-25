@@ -2,7 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
-	"strings"
+	"log"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-sdk-go/aws"
@@ -15,18 +15,12 @@ func HandleUnattemptedQuizzesV3(request events.APIGatewayProxyRequest) (events.A
 		return CreateErrorResponse(401, "Unauthorized"), nil
 	}
 
-	student, err := GetStudentFromDynamoDB(uid)
-	if err != nil || student == nil {
-		return CreateErrorResponse(404, "Student not found"), nil
+	category := request.QueryStringParameters["category"]
+	log.Printf("📌 Category parameter: %s", category)
+	if category == "" {
+		return CreateErrorResponse(400, "Missing 'category' parameter"), nil
 	}
-
-	// Get all quizzes for student's class
-	var enrolledSubjects []string
-	for _, category := range VALID_CATEGORIES {
-		if strings.HasPrefix(category, student.StudentClass) {
-			enrolledSubjects = append(enrolledSubjects, category)
-		}
-	}
+	log.Printf("📌 Fetching unattempted quizzes for UID: %s, Category: %s", uid, category)
 
 	// Get all attempted quizzes
 	attemptedQuizzes := make(map[string]bool)
@@ -47,25 +41,32 @@ func HandleUnattemptedQuizzesV3(request events.APIGatewayProxyRequest) (events.A
 		}
 	}
 
-	// Get all available quizzes for enrolled subjects
-	var unattemptedQuizzes []string
-	for _, category := range enrolledSubjects {
-		scanResult, err := dynamoClient.Scan(&dynamodb.ScanInput{
-			TableName: aws.String("quiz_questions"),
-			FilterExpression: aws.String("category = :category"),
-			ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
-				":category": {S: aws.String(category)},
-			},
-		})
+	// Get all quizzes in category
+	scanResult, err := dynamoClient.Scan(&dynamodb.ScanInput{
+		TableName: aws.String("quiz_questions"),
+		FilterExpression: aws.String("category = :category"),
+		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
+			":category": {S: aws.String(category)},
+		},
+	})
 
-		if err == nil {
-			for _, item := range scanResult.Items {
-				if quizName := item["quiz_name"]; quizName != nil && quizName.S != nil {
-					unattemptedQuizzes = append(unattemptedQuizzes, *quizName.S)
-				}
-			}
+	if err != nil {
+		log.Printf("❌ Error scanning quizzes: %v", err)
+		return CreateErrorResponse(500, "Internal Server Error"), nil
+	}
+
+	log.Printf("📊 Found %d items in scan result", len(scanResult.Items))
+
+	// Return all quizzes (allow retakes)
+	var unattemptedQuizzes []string
+	for _, item := range scanResult.Items {
+		if quizName := item["quiz_name"]; quizName != nil && quizName.S != nil {
+			unattemptedQuizzes = append(unattemptedQuizzes, *quizName.S)
+			log.Printf("📝 Quiz: %s", *quizName.S)
 		}
 	}
+
+	log.Printf("🎯 Returning %d unattempted quizzes", len(unattemptedQuizzes))
 
 	response := map[string]interface{}{
 		"unattempted_quizzes": unattemptedQuizzes,

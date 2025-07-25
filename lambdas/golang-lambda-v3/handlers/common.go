@@ -95,6 +95,14 @@ func GetTargetUIDFromContext(request events.APIGatewayProxyRequest) (string, err
 	return targetUID, nil
 }
 
+func GetTargetEmailFromContext(request events.APIGatewayProxyRequest) string {
+	if request.RequestContext.Authorizer == nil {
+		return ""
+	}
+	targetEmail, _ := request.RequestContext.Authorizer["targetEmail"].(string)
+	return targetEmail
+}
+
 func GetEmailFromContext(request events.APIGatewayProxyRequest) string {
 	if request.RequestContext.Authorizer == nil {
 		return ""
