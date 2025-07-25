@@ -19,12 +19,25 @@ func HandleQuizResultV2(request events.APIGatewayProxyRequest) (events.APIGatewa
 	}
 
 	quizName := request.QueryStringParameters["quizName"]
+	className := request.QueryStringParameters["className"]
+	subjectName := request.QueryStringParameters["subjectName"]
+	topic := request.QueryStringParameters["topic"]
+	
 	if quizName == "" {
 		return CreateErrorResponse(400, "Missing 'quizName' parameter"), nil
 	}
+	if className == "" {
+		return CreateErrorResponse(400, "Missing 'className' parameter"), nil
+	}
+	if subjectName == "" {
+		return CreateErrorResponse(400, "Missing 'subjectName' parameter"), nil
+	}
+	if topic == "" {
+		return CreateErrorResponse(400, "Missing 'topic' parameter"), nil
+	}
 
 	email = strings.ToLower(email)
-	log.Printf("📌 Fetching result for: %s, Quiz: %s", email, quizName)
+	log.Printf("📌 Fetching result for: %s, Quiz: %s (%s-%s-%s)", email, quizName, className, subjectName, topic)
 
 	// Get quiz attempt using simple key lookup
 	result, err := dynamoClient.GetItem(&dynamodb.GetItemInput{

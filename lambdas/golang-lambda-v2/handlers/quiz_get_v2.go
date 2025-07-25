@@ -11,6 +11,9 @@ import (
 func HandleQuizGetByNameV2(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	email := request.QueryStringParameters["email"]
 	quizName := request.QueryStringParameters["quizName"]
+	className := request.QueryStringParameters["className"]
+	subjectName := request.QueryStringParameters["subjectName"]
+	topic := request.QueryStringParameters["topic"]
 
 	if email == "" {
 		return CreateErrorResponse(400, "Missing 'email' parameter"), nil
@@ -18,9 +21,18 @@ func HandleQuizGetByNameV2(request events.APIGatewayProxyRequest) (events.APIGat
 	if quizName == "" {
 		return CreateErrorResponse(400, "Missing 'quizName' parameter"), nil
 	}
+	if className == "" {
+		return CreateErrorResponse(400, "Missing 'className' parameter"), nil
+	}
+	if subjectName == "" {
+		return CreateErrorResponse(400, "Missing 'subjectName' parameter"), nil
+	}
+	if topic == "" {
+		return CreateErrorResponse(400, "Missing 'topic' parameter"), nil
+	}
 
 	email = strings.ToLower(email)
-	log.Printf("📌 Fetching quiz questions for: %s, Email: %s", quizName, email)
+	log.Printf("📌 Fetching quiz questions for: %s (%s-%s-%s), Email: %s", quizName, className, subjectName, topic, email)
 
 	// Check student exists and is paid
 	student, err := GetStudentFromDynamoDB(email)
@@ -40,7 +52,7 @@ func HandleQuizGetByNameV2(request events.APIGatewayProxyRequest) (events.APIGat
 	// }
 
 	// Fetch quiz data and remove correctAnswer from questions
-	quiz, err := GetQuizFromDynamoDB(quizName)
+	quiz, err := GetQuizFromDynamoDB(quizName, className, subjectName, topic)
 	if err != nil {
 		log.Printf("❌ Error fetching quiz: %v", err)
 		return CreateErrorResponse(500, "Internal Server Error"), nil
@@ -62,10 +74,12 @@ func HandleQuizGetByNameV2(request events.APIGatewayProxyRequest) (events.APIGat
 	}
 
 	quizData := map[string]interface{}{
-		"quizName":  quiz.QuizName,
-		"duration":  quiz.Duration,
-		"category":  quiz.Category,
-		"questions": cleanQuestions,
+		"quizName":    quiz.QuizName,
+		"duration":    quiz.Duration,
+		"className":   quiz.ClassName,
+		"subjectName": quiz.SubjectName,
+		"topic":       quiz.Topic,
+		"questions":   cleanQuestions,
 	}
 
 	response := map[string]interface{}{

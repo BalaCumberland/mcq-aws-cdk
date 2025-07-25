@@ -23,14 +23,16 @@ func HandleQuizUploadV2(request events.APIGatewayProxyRequest) (events.APIGatewa
 		log.Printf("❌ Permission denied: %v", err)
 		return CreateErrorResponse(403, err.Error()), nil
 	}
-	
+
 	// Extract query parameters
 	queryParams := request.QueryStringParameters
-	category := queryParams["category"]
+	className := queryParams["className"]
+	subjectName := queryParams["subjectName"]
+	topic := queryParams["topic"]
 	durationStr := queryParams["duration"]
 	quizName := queryParams["quizName"]
 
-	if category == "" || durationStr == "" || quizName == "" {
+	if className == "" || subjectName == "" || topic == "" || durationStr == "" || quizName == "" {
 		return CreateErrorResponse(400, "Missing required query parameters"), nil
 	}
 
@@ -86,7 +88,7 @@ func HandleQuizUploadV2(request events.APIGatewayProxyRequest) (events.APIGatewa
 	}
 
 	// Process Excel and save
-	quizData, err := processExcelV2(fileContent, category, duration, quizName)
+	quizData, err := processExcelV2(fileContent, className, subjectName, topic, duration, quizName)
 	if err != nil {
 		log.Printf("❌ Excel processing error: %v", err)
 		return CreateErrorResponse(500, fmt.Sprintf("Failed to process Excel file: %v", err)), nil
@@ -100,8 +102,8 @@ func HandleQuizUploadV2(request events.APIGatewayProxyRequest) (events.APIGatewa
 		return CreateErrorResponse(500, "Internal Server Error"), nil
 	}
 
-	responseJSON := fmt.Sprintf(`{"message":"%s","quizName":"%s","category":"%s","duration":%v,"questionCount":%d}`, 
-		"Quiz uploaded successfully", quizData.QuizName, quizData.Category, quizData.Duration, len(quizData.Questions))
+	responseJSON := fmt.Sprintf(`{"message":"%s","quizName":"%s","className":"%s","subjectName":"%s","topic":"%s","duration":%v,"questionCount":%d}`,
+		"Quiz uploaded successfully", quizData.QuizName, quizData.ClassName, quizData.SubjectName, quizData.Topic, quizData.Duration, len(quizData.Questions))
 	return events.APIGatewayProxyResponse{
 		StatusCode: 201,
 		Headers:    GetCORSHeaders(),
@@ -109,7 +111,7 @@ func HandleQuizUploadV2(request events.APIGatewayProxyRequest) (events.APIGatewa
 	}, nil
 }
 
-func processExcelV2(fileBytes []byte, category string, duration int, quizName string) (QuizData, error) {
+func processExcelV2(fileBytes []byte, className string, subjectName string, topic string, duration int, quizName string) (QuizData, error) {
 	f, err := excelize.OpenReader(bytes.NewReader(fileBytes))
 	if err != nil {
 		return QuizData{}, err
@@ -141,7 +143,7 @@ func processExcelV2(fileBytes []byte, category string, duration int, quizName st
 	for _, row := range rows[1:] {
 		correctAnswer := getCellValueV2(row, headerMap, "CorrectAnswer")
 		allAnswersStr := getCellValueV2(row, headerMap, "AllAnswers")
-		
+
 		// Parse all answers from Excel
 		var allAnswers []string
 		if allAnswersStr != "" {
@@ -151,7 +153,7 @@ func processExcelV2(fileBytes []byte, category string, duration int, quizName st
 				allAnswers[i] = strings.TrimSpace(allAnswers[i])
 			}
 		}
-		
+
 		questions = append(questions, Question{
 			Question:      getCellValueV2(row, headerMap, "Question"),
 			CorrectAnswer: correctAnswer,
@@ -161,10 +163,12 @@ func processExcelV2(fileBytes []byte, category string, duration int, quizName st
 	}
 
 	return QuizData{
-		QuizName:  quizName,
-		Duration:  duration,
-		Category:  category,
-		Questions: questions,
+		QuizName:    quizName,
+		Duration:    duration,
+		ClassName:   className,
+		SubjectName: subjectName,
+		Topic:       topic,
+		Questions:   questions,
 	}, nil
 }
 

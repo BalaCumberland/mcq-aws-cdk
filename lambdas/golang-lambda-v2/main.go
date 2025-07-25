@@ -35,7 +35,7 @@ func lambdaHandler(request events.APIGatewayProxyRequest) (events.APIGatewayProx
 		return handlers.HandleStudentGetByEmailV2(request)
 	case "/v2/quiz/unattempted-quizzes":
 		return handlers.HandleUnattemptedQuizzesV2(request)
-	case "/v2/quiz/get-by-name":
+	case "/v2/quiz":
 		return handlers.HandleQuizGetByNameV2(request)
 	case "/v2/quiz/submit":
 		return handlers.HandleQuizSubmitV2(request)
@@ -47,6 +47,24 @@ func lambdaHandler(request events.APIGatewayProxyRequest) (events.APIGatewayProx
 		return handlers.HandleQuizResultV2(request)
 	case "/v2/students/upgrade-class":
 		return handlers.HandleStudentClassUpgradeV2(request)
+	case "/v2/class/insert":
+		return handlers.HandleClassInsert(request)
+	case "/v2/class/delete":
+		return handlers.HandleClassDelete(request)
+	case "/v2/class/fetch":
+		return handlers.HandleClassFetch(request)
+	case "/v2/subject/insert":
+		return handlers.HandleSubjectInsert(request)
+	case "/v2/subject/delete":
+		return handlers.HandleSubjectDelete(request)
+	case "/v2/subject/fetch":
+		return handlers.HandleSubjectFetch(request)
+	case "/v2/topic/insert":
+		return handlers.HandleTopicInsert(request)
+	case "/v2/topic/delete":
+		return handlers.HandleTopicDelete(request)
+	case "/v2/topic/fetch":
+		return handlers.HandleTopicFetch(request)
 	default:
 		log.Printf("❌ Invalid API Path: %s", request.Path)
 		return events.APIGatewayProxyResponse{

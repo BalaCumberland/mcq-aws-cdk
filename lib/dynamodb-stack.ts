@@ -7,6 +7,7 @@ export class DynamoDbStack extends cdk.Stack {
   public readonly studentTable: dynamodb.Table;
   public readonly attemptsTable: dynamodb.Table;
   public readonly studentQuizzesTable: dynamodb.Table;
+  public readonly classSubjectsTable: dynamodb.Table;
 
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
@@ -49,6 +50,15 @@ export class DynamoDbStack extends cdk.Stack {
       indexName: 'category-index',
       partitionKey: { name: 'category', type: dynamodb.AttributeType.STRING },
       sortKey: { name: 'attempted_at', type: dynamodb.AttributeType.STRING }
+    });
+
+    // Class Subjects Table
+    this.classSubjectsTable = new dynamodb.Table(this, 'ClassSubjectsTable', {
+      tableName: 'class_subjects',
+      partitionKey: { name: 'class_name', type: dynamodb.AttributeType.STRING },
+      sortKey: { name: 'subject_name', type: dynamodb.AttributeType.STRING },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      removalPolicy: cdk.RemovalPolicy.RETAIN
     });
   }
 }

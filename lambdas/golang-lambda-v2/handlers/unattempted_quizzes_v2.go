@@ -12,25 +12,49 @@ import (
 
 func HandleUnattemptedQuizzesV2(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	email := request.QueryStringParameters["email"]
-	category := request.QueryStringParameters["category"]
+	className := request.QueryStringParameters["className"]
+	subjectName := request.QueryStringParameters["subjectName"]
+	topic := request.QueryStringParameters["topic"] // Optional
 
 	if email == "" {
 		return CreateErrorResponse(400, "Missing 'email' parameter"), nil
 	}
-	if category == "" {
-		return CreateErrorResponse(400, "Missing 'category' parameter"), nil
+	if className == "" {
+		return CreateErrorResponse(400, "Missing 'className' parameter"), nil
+	}
+	if subjectName == "" {
+		return CreateErrorResponse(400, "Missing 'subjectName' parameter"), nil
 	}
 
 	email = strings.ToLower(email)
-	log.Printf("📌 Fetching unattempted quizzes for: %s, Category: %s", email, category)
+	log.Printf("📌 Fetching unattempted quizzes for: %s, Class: %s, Subject: %s, Topic: %s", email, className, subjectName, topic)
 
-	// Get all quizzes in category
+	// Build filter expression based on parameters
+	var filterExpression string
+	var expressionAttributeValues map[string]*dynamodb.AttributeValue
+
+	if topic != "" {
+		// Filter by class, subject, and topic
+		filterExpression = "class_name = :className AND subject_name = :subjectName AND topic = :topic"
+		expressionAttributeValues = map[string]*dynamodb.AttributeValue{
+			":className":   {S: aws.String(className)},
+			":subjectName": {S: aws.String(subjectName)},
+			":topic":       {S: aws.String(topic)},
+		}
+	} else {
+		// Filter by class and subject only
+		filterExpression = "class_name = :className AND subject_name = :subjectName"
+		expressionAttributeValues = map[string]*dynamodb.AttributeValue{
+			":className":   {S: aws.String(className)},
+			":subjectName": {S: aws.String(subjectName)},
+		}
+	}
+
+	// Get all quizzes matching criteria
 	result, err := dynamoClient.Scan(&dynamodb.ScanInput{
-		TableName:        aws.String("quiz_questions"),
-		FilterExpression: aws.String("category = :category"),
-		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
-			":category": {S: aws.String(category)},
-		},
+		TableName:                 aws.String("quiz_questions"),
+		FilterExpression:          aws.String(filterExpression),
+		ExpressionAttributeValues: expressionAttributeValues,
 	})
 
 	if err != nil {

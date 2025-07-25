@@ -1,0 +1,9 @@
+{
+  "DatabaseStack": {
+    "ExportsOutputFnGetAttLambdaSecurityGroup0BD9FC99GroupId34A98CFB": "sg-04737ffadaffdd2f0"
+  },
+  "ApiLambdaStack": {
+    "ApiUrl": "https://ieetpwfoci.execute-api.us-east-1.amazonaws.com/prod/",
+    "McqApiEndpoint639C95E5": "https://ieetpwfoci.execute-api.us-east-1.amazonaws.com/prod/"
+  }
+}

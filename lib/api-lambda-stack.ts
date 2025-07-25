@@ -84,7 +84,8 @@ export class ApiLambdaStack extends cdk.Stack {
         'arn:aws:dynamodb:*:*:table/students', 
         'arn:aws:dynamodb:*:*:table/student_quiz_attempts',
         'arn:aws:dynamodb:*:*:table/student_quiz_attempts/index/*',
-        'arn:aws:dynamodb:*:*:table/student_quizzes'
+        'arn:aws:dynamodb:*:*:table/student_quizzes',
+        'arn:aws:dynamodb:*:*:table/class_subjects'
       ]
     }));
 

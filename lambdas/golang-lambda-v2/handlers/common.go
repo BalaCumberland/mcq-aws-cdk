@@ -23,10 +23,12 @@ type DBConfig struct {
 }
 
 type QuizData struct {
-	QuizName  string     `json:"quizName"`
-	Duration  interface{} `json:"duration"`
-	Category  string     `json:"category"`
-	Questions []Question `json:"questions"`
+	QuizName    string      `json:"quizName"`
+	Duration    interface{} `json:"duration"`
+	ClassName   string      `json:"className"`
+	SubjectName string      `json:"subjectName"`
+	Topic       string      `json:"topic"`
+	Questions   []Question  `json:"questions"`
 }
 
 type Question struct {
@@ -107,7 +109,7 @@ func CheckAdminRole(request events.APIGatewayProxyRequest) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	
+
 	userStudent, _ := GetStudentFromDynamoDB(strings.ToLower(userEmail))
 	userRole := "student"
 	if userStudent != nil && userStudent.Role != nil {
@@ -115,34 +117,32 @@ func CheckAdminRole(request events.APIGatewayProxyRequest) (string, error) {
 			userRole = roleStr
 		}
 	}
-	
+
 	if userRole != "admin" && userRole != "super" {
 		return "", fmt.Errorf("only 'admin' or 'super' role allowed")
 	}
-	
+
 	return userRole, nil
 }
 
-
-
 func getDBConfig() (*DBConfig, error) {
 	log.Printf("🔐 Getting DB config from environment variables...")
-	
+
 	host := os.Getenv("DB_HOST")
 	portStr := os.Getenv("DB_PORT")
 	username := os.Getenv("DB_USER")
 	password := os.Getenv("DB_PASSWORD")
 	dbname := os.Getenv("DB_NAME")
-	
+
 	if host == "" || portStr == "" || username == "" || password == "" || dbname == "" {
 		return nil, fmt.Errorf("missing database environment variables")
 	}
-	
+
 	port, err := strconv.Atoi(portStr)
 	if err != nil {
 		return nil, fmt.Errorf("invalid DB_PORT: %v", err)
 	}
-	
+
 	config := &DBConfig{
 		Host:     host,
 		Port:     port,
@@ -150,7 +150,7 @@ func getDBConfig() (*DBConfig, error) {
 		Password: password,
 		DBName:   dbname,
 	}
-	
+
 	log.Printf("✅ DB config loaded from environment")
 	return config, nil
 }
@@ -170,13 +170,13 @@ func ConnectDB() (*sql.DB, error) {
 		log.Printf("❌ Failed to open DB connection: %v", err)
 		return nil, err
 	}
-	
+
 	// Configure connection pool
 	db.SetMaxOpenConns(10)
 	db.SetMaxIdleConns(5)
 	db.SetConnMaxLifetime(5 * time.Minute)
 	db.SetConnMaxIdleTime(1 * time.Minute)
-	
+
 	log.Printf("✅ Database connection established")
 	return db, nil
 }
@@ -230,12 +230,12 @@ func SaveToPostgres(quiz QuizData) error {
 	}
 
 	query := `
-		INSERT INTO quiz_questions (quiz_name, duration, category, questions)
-		VALUES ($1, $2, $3, $4::jsonb)
+		INSERT INTO quiz_questions (quiz_name, duration, class_name, subject_name, topic, questions)
+		VALUES ($1, $2, $3, $4, $5, $6::jsonb)
 		ON CONFLICT (quiz_name)
-		DO UPDATE SET duration = EXCLUDED.duration, category = EXCLUDED.category, questions = EXCLUDED.questions;
+		DO UPDATE SET duration = EXCLUDED.duration, class_name = EXCLUDED.class_name, subject_name = EXCLUDED.subject_name, topic = EXCLUDED.topic, questions = EXCLUDED.questions;
 	`
 
-	_, err = db.Exec(query, quiz.QuizName, quiz.Duration, quiz.Category, questionsJSON)
+	_, err = db.Exec(query, quiz.QuizName, quiz.Duration, quiz.ClassName, quiz.SubjectName, quiz.Topic, questionsJSON)
 	return err
 }

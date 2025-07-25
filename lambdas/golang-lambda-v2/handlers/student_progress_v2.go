@@ -12,7 +12,8 @@ import (
 )
 
 type ProgressSummary struct {
-	Category     string  `json:"category"`
+	ClassName    string  `json:"className"`
+	SubjectName  string  `json:"subjectName"`
 	Percentage   float64 `json:"percentage"`
 	Attempted    int     `json:"attempted"`
 	Unattempted  int     `json:"unattempted"`
@@ -20,7 +21,9 @@ type ProgressSummary struct {
 
 type TestScore struct {
 	QuizName       string  `json:"quizName"`
-	Category       string  `json:"category"`
+	ClassName      string  `json:"className"`
+	SubjectName    string  `json:"subjectName"`
+	Topic          string  `json:"topic"`
 	CorrectCount   int     `json:"correctCount"`
 	WrongCount     int     `json:"wrongCount"`
 	SkippedCount   int     `json:"skippedCount"`
@@ -33,7 +36,7 @@ type TestScore struct {
 
 type ProgressResponse struct {
 	Email           string                       `json:"email"`
-	CategorySummary []ProgressSummary            `json:"categorySummary"`
+	SubjectSummary  []ProgressSummary            `json:"subjectSummary"`
 	IndividualTests map[string][]TestScore       `json:"individualTests"`
 }
 
@@ -50,15 +53,10 @@ func HandleStudentProgressV2(request events.APIGatewayProxyRequest) (events.APIG
 		return CreateErrorResponse(404, "Student not found"), nil
 	}
 
-	// Get enrolled subjects for this student class
-	var enrolledSubjects []string
-	for _, category := range VALID_CATEGORIES {
-		if strings.HasPrefix(category, student.StudentClass) {
-			enrolledSubjects = append(enrolledSubjects, category)
-		}
-	}
-
-	if len(enrolledSubjects) == 0 {
+	// Get enrolled subjects for this student class from class_subjects table
+	subjects, err := FetchSubjects(student.StudentClass)
+	if err != nil || len(subjects) == 0 {
+		log.Printf("❌ No subjects found for class %s: %v", student.StudentClass, err)
 		return CreateErrorResponse(404, "No subjects found for student class"), nil
 	}
 
@@ -76,8 +74,8 @@ func HandleStudentProgressV2(request events.APIGatewayProxyRequest) (events.APIG
 		return CreateErrorResponse(500, "Internal Server Error"), nil
 	}
 
-	// Create maps to track category stats
-	attemptedQuizzes := make(map[string]map[string]bool) // category -> quiz names
+	// Create maps to track subject stats
+	attemptedQuizzes := make(map[string]map[string]bool) // subject -> quiz names
 	percentageSum := make(map[string]float64)
 	percentageCount := make(map[string]int)
 	individualTests := make(map[string][]TestScore)
@@ -85,13 +83,15 @@ func HandleStudentProgressV2(request events.APIGatewayProxyRequest) (events.APIG
 	// Process attempts
 	log.Printf("📊 Found %d attempts in DynamoDB", len(result.Items))
 	for _, item := range result.Items {
-		log.Printf("📊 Processing item: %+v", item)
-		var category, quizName, attemptedAt string
+		var className, subjectName, topic, quizName, attemptedAt string
 		var correctCount, wrongCount, skippedCount, totalCount, attemptNumber int
 		var percentage float64
 		
-		if cat := item["category"]; cat != nil && cat.S != nil {
-			category = *cat.S
+		if cn := item["class_name"]; cn != nil && cn.S != nil {
+			className = *cn.S
+		}
+		if sn := item["category"]; sn != nil && sn.S != nil {
+			subjectName = *sn.S
 		}
 		if qn := item["quiz_name"]; qn != nil && qn.S != nil {
 			quizName = *qn.S
@@ -114,7 +114,6 @@ func HandleStudentProgressV2(request events.APIGatewayProxyRequest) (events.APIG
 			} else if pct.S != nil {
 				percentage, _ = strconv.ParseFloat(*pct.S, 64)
 			}
-			log.Printf("📊 Quiz: %s, Percentage: %f", quizName, percentage)
 		}
 		if an := item["attempt_number"]; an != nil && an.N != nil {
 			attemptNumber, _ = strconv.Atoi(*an.N)
@@ -123,10 +122,13 @@ func HandleStudentProgressV2(request events.APIGatewayProxyRequest) (events.APIG
 			attemptedAt = *at.S
 		}
 
-		// Only include enrolled subjects
+		// Only include student's class and enrolled subjects
+		if className != student.StudentClass {
+			continue
+		}
 		enrolled := false
-		for _, subject := range enrolledSubjects {
-			if category == subject {
+		for _, subject := range subjects {
+			if subjectName == subject {
 				enrolled = true
 				break
 			}
@@ -135,14 +137,13 @@ func HandleStudentProgressV2(request events.APIGatewayProxyRequest) (events.APIG
 			continue
 		}
 
-		// Update category stats - count each quiz attempt separately
-		if attemptedQuizzes[category] == nil {
-			attemptedQuizzes[category] = make(map[string]bool)
+		// Update subject stats
+		if attemptedQuizzes[subjectName] == nil {
+			attemptedQuizzes[subjectName] = make(map[string]bool)
 		}
-		attemptedQuizzes[category][quizName] = true
-		percentageSum[category] += percentage
-		percentageCount[category]++
-		log.Printf("📊 Added %s percentage: %f (total: %f, count: %d)", category, percentage, percentageSum[category], percentageCount[category])
+		attemptedQuizzes[subjectName][quizName] = true
+		percentageSum[subjectName] += percentage
+		percentageCount[subjectName]++
 
 		// Round percentage to 1 decimal place
 		roundedPercentage := float64(int(percentage*10+0.5)) / 10
@@ -150,7 +151,9 @@ func HandleStudentProgressV2(request events.APIGatewayProxyRequest) (events.APIG
 		// Add to individual tests
 		test := TestScore{
 			QuizName:      quizName,
-			Category:      category,
+			ClassName:     className,
+			SubjectName:   subjectName,
+			Topic:         topic,
 			CorrectCount:  correctCount,
 			WrongCount:    wrongCount,
 			SkippedCount:  skippedCount,
@@ -160,19 +163,20 @@ func HandleStudentProgressV2(request events.APIGatewayProxyRequest) (events.APIG
 			LatestScore:   roundedPercentage,
 			AttemptedAt:   attemptedAt,
 		}
-		individualTests[category] = append(individualTests[category], test)
+		individualTests[subjectName] = append(individualTests[subjectName], test)
 	}
 
-	// Create category summary for all enrolled subjects
-	var categorySummary []ProgressSummary
-	for _, category := range enrolledSubjects {
-		// Get total quiz count for this category
+	// Create subject summary for all enrolled subjects
+	var subjectSummary []ProgressSummary
+	for _, subject := range subjects {
+		// Get total quiz count for this class and subject
 		totalQuizzes := 0
 		quizResult, err := dynamoClient.Scan(&dynamodb.ScanInput{
 			TableName: aws.String("quiz_questions"),
-			FilterExpression: aws.String("category = :category"),
+			FilterExpression: aws.String("class_name = :className AND subject_name = :subjectName"),
 			ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
-				":category": {S: aws.String(category)},
+				":className":   {S: aws.String(student.StudentClass)},
+				":subjectName": {S: aws.String(subject)},
 			},
 			Select: aws.String("COUNT"),
 		})
@@ -180,27 +184,28 @@ func HandleStudentProgressV2(request events.APIGatewayProxyRequest) (events.APIG
 			totalQuizzes = int(*quizResult.Count)
 		}
 
-		attempted := len(attemptedQuizzes[category])
+		attempted := len(attemptedQuizzes[subject])
 		unattempted := totalQuizzes - attempted
 		
 		// Calculate average percentage and round to 1 decimal
 		var avgPercentage float64
-		if percentageCount[category] > 0 {
-			avgPercentage = percentageSum[category] / float64(percentageCount[category])
+		if percentageCount[subject] > 0 {
+			avgPercentage = percentageSum[subject] / float64(percentageCount[subject])
 			avgPercentage = float64(int(avgPercentage*10+0.5)) / 10 // Round to 1 decimal
 		}
 
-		categorySummary = append(categorySummary, ProgressSummary{
-			Category:    category,
-			Percentage:  avgPercentage,
-			Attempted:   attempted,
-			Unattempted: unattempted,
+		subjectSummary = append(subjectSummary, ProgressSummary{
+			ClassName:    student.StudentClass,
+			SubjectName:  subject,
+			Percentage:   avgPercentage,
+			Attempted:    attempted,
+			Unattempted:  unattempted,
 		})
 	}
 
 	response := ProgressResponse{
 		Email:           email,
-		CategorySummary: categorySummary,
+		SubjectSummary:  subjectSummary,
 		IndividualTests: individualTests,
 	}
 

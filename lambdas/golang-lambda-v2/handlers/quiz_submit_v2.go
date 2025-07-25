@@ -14,8 +14,21 @@ import (
 
 func HandleQuizSubmitV2(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	quizName := request.QueryStringParameters["quizName"]
+	className := request.QueryStringParameters["className"]
+	subjectName := request.QueryStringParameters["subjectName"]
+	topic := request.QueryStringParameters["topic"]
+	
 	if quizName == "" {
 		return CreateErrorResponse(400, "Missing 'quizName' parameter"), nil
+	}
+	if className == "" {
+		return CreateErrorResponse(400, "Missing 'className' parameter"), nil
+	}
+	if subjectName == "" {
+		return CreateErrorResponse(400, "Missing 'subjectName' parameter"), nil
+	}
+	if topic == "" {
+		return CreateErrorResponse(400, "Missing 'topic' parameter"), nil
 	}
 
 	var submitReq SubmitRequest
@@ -25,10 +38,10 @@ func HandleQuizSubmitV2(request events.APIGatewayProxyRequest) (events.APIGatewa
 		return CreateErrorResponse(400, "Invalid JSON format"), nil
 	}
 
-	log.Printf("📌 Processing quiz submission: %s", quizName)
+	log.Printf("📌 Processing quiz submission: %s for %s-%s-%s", quizName, className, subjectName, topic)
 
 	// Get quiz data
-	quiz, err := GetQuizFromDynamoDB(quizName)
+	quiz, err := GetQuizFromDynamoDB(quizName, className, subjectName, topic)
 	if err != nil || quiz == nil {
 		log.Printf("❌ Quiz not found: %v", err)
 		return CreateErrorResponse(404, "Quiz not found"), nil
@@ -197,7 +210,8 @@ func HandleQuizSubmitV2(request events.APIGatewayProxyRequest) (events.APIGatewa
 	attempt := AttemptItem{
 		Email:         email,
 		QuizName:      quizName,
-		Category:      quiz.Category,
+		ClassName:     quiz.ClassName,
+		Category:      quiz.SubjectName,
 		CorrectCount:  correctCount,
 		WrongCount:    wrongCount,
 		SkippedCount:  skippedCount,
