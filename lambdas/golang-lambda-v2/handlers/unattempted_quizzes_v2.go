@@ -11,14 +11,16 @@ import (
 )
 
 func HandleUnattemptedQuizzesV2(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	email := request.QueryStringParameters["email"]
+	// Get email from auth context
+	email, err := GetUserFromContext(request)
+	if err != nil {
+		return CreateErrorResponse(401, "Unauthorized"), nil
+	}
+	
 	className := request.QueryStringParameters["className"]
 	subjectName := request.QueryStringParameters["subjectName"]
 	topic := request.QueryStringParameters["topic"] // Optional
 
-	if email == "" {
-		return CreateErrorResponse(400, "Missing 'email' parameter"), nil
-	}
 	if className == "" {
 		return CreateErrorResponse(400, "Missing 'className' parameter"), nil
 	}

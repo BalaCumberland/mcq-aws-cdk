@@ -55,7 +55,6 @@ exports.handler = async (event) => {
         const stage = apiGatewayArnTmp[1];
         
         const resourceArn = `arn:aws:execute-api:${region}:${awsAccountId}:${restApiId}/${stage}/*/*`;
-        console.log('📋 Generated resource ARN:', resourceArn);
         
         const policy = {
             principalId: decodedToken.uid,
