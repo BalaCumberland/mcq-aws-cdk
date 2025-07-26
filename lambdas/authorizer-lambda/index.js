@@ -67,7 +67,8 @@ exports.handler = async (event) => {
                 }]
             },
             context: {
-                email: decodedToken.email,
+                email: decodedToken.email || '',
+                phone_number: decodedToken.phone_number || '',
                 uid: decodedToken.uid
             }
         };
