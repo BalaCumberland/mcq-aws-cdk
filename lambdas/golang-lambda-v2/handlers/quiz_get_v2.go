@@ -9,15 +9,17 @@ import (
 )
 
 func HandleQuizGetByNameV2(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	email := request.QueryStringParameters["email"]
+	// Get email from auth context
+	email, err := GetUserFromContext(request)
+	if err != nil {
+		return CreateErrorResponse(401, "Unauthorized"), nil
+	}
+	
 	quizName := request.QueryStringParameters["quizName"]
 	className := request.QueryStringParameters["className"]
 	subjectName := request.QueryStringParameters["subjectName"]
 	topic := request.QueryStringParameters["topic"]
 
-	if email == "" {
-		return CreateErrorResponse(400, "Missing 'email' parameter"), nil
-	}
 	if quizName == "" {
 		return CreateErrorResponse(400, "Missing 'quizName' parameter"), nil
 	}
