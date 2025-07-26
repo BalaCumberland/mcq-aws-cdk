@@ -136,42 +136,7 @@ func GetQuizFromDynamoDB(quizName, className, subjectName, topic string) (*QuizI
 	return &quiz, err
 }
 
-// Save student to DynamoDB
-func SaveStudentToDynamoDB(student StudentItem) error {
-	av, err := dynamodbattribute.MarshalMap(student)
-	if err != nil {
-		return err
-	}
 
-	_, err = dynamoClient.PutItem(&dynamodb.PutItemInput{
-		TableName: aws.String("students"),
-		Item:      av,
-	})
-
-	return err
-}
-
-// Get student from DynamoDB
-func GetStudentFromDynamoDB(email string) (*StudentItem, error) {
-	result, err := dynamoClient.GetItem(&dynamodb.GetItemInput{
-		TableName: aws.String("students"),
-		Key: map[string]*dynamodb.AttributeValue{
-			"email": {S: aws.String(email)},
-		},
-	})
-
-	if err != nil {
-		return nil, err
-	}
-
-	if result.Item == nil {
-		return nil, nil
-	}
-
-	var student StudentItem
-	err = dynamodbattribute.UnmarshalMap(result.Item, &student)
-	return &student, err
-}
 
 // Save quiz attempt to DynamoDB
 func SaveAttemptToDynamoDB(attempt AttemptItem) error {
