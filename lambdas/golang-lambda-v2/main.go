@@ -67,6 +67,8 @@ func lambdaHandler(request events.APIGatewayProxyRequest) (events.APIGatewayProx
 		return handlers.HandleTopicDelete(request)
 	case "/v2/topic/fetch":
 		return handlers.HandleTopicFetch(request)
+	case "/v2/students/lookup":
+		return handlers.HandleStudentLookup(request)
 	default:
 		log.Printf("❌ Invalid API Path: %s", request.Path)
 		return events.APIGatewayProxyResponse{

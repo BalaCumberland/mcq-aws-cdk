@@ -81,12 +81,15 @@ func HandleStudentGetProfile(request events.APIGatewayProxyRequest) (events.APIG
 		}
 	}
 
-	// Calculate payment status like v1
-	today := time.Now().Format("2006-01-02")
+	// Calculate payment status with proper expiration check
 	if student.SubExpDate != nil {
-		if dateStr, ok := student.SubExpDate.(string); ok && dateStr != "" {
-			if dateStr >= today {
-				studentData["payment_status"] = "PAID"
+		if subExpStr, ok := student.SubExpDate.(string); ok && subExpStr != "" {
+			if subExpTime, err := time.Parse(time.RFC3339, subExpStr); err == nil {
+				if subExpTime.After(time.Now()) {
+					studentData["payment_status"] = "PAID"
+				} else {
+					studentData["payment_status"] = "EXPIRED"
+				}
 			}
 		}
 	}
