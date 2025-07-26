@@ -24,25 +24,6 @@ function initFirebase() {
     return firebaseApp;
 }
 
-async function getUidFromIdentifier(identifier) {
-    try {
-        if (identifier.includes('@')) {
-            const user = await admin.auth().getUserByEmail(identifier);
-            return user.uid;
-        } else if (/^\+?\d+$/.test(identifier)) {
-            const user = await admin.auth().getUserByPhoneNumber(identifier);
-            return user.uid;
-        }
-    } catch (err) {
-        if (err.code === 'auth/user-not-found') {
-            console.log("ℹ️ User not found for identifier:", identifier);
-        } else {
-            console.error("❌ Error fetching UID:", err.message);
-        }
-    }
-    return null;
-}
-
 exports.handler = async (event) => {
     console.log('🔐 Authorizer started');
     
@@ -56,9 +37,11 @@ exports.handler = async (event) => {
     console.log('🔑 Token extracted, length:', idToken.length);
     
     try {
+       
         initFirebase();
         console.log('✅ Firebase initialized');
         
+       
         const decodedToken = await admin.auth().verifyIdToken(idToken);
         
         console.log(`✅ Token verified for user: ${decodedToken.email}`);
@@ -72,17 +55,7 @@ exports.handler = async (event) => {
         const stage = apiGatewayArnTmp[1];
         
         const resourceArn = `arn:aws:execute-api:${region}:${awsAccountId}:${restApiId}/${stage}/*/*`;
-
-        // 🔄 Resolve studentUid from X-Identifier header (if provided)
-        const headers = event.headers || {};
-        const identifier = headers['x-identifier'] || headers['X-Identifier'];
-        let studentUid = null;
-
-        if (identifier) {
-            console.log("🔍 Resolving studentUid from identifier:", identifier);
-            studentUid = await getUidFromIdentifier(identifier);
-        }
-
+        
         const policy = {
             principalId: decodedToken.uid,
             policyDocument: {
@@ -96,12 +69,11 @@ exports.handler = async (event) => {
             context: {
                 email: decodedToken.email || '',
                 phone_number: decodedToken.phone_number || '',
-                uid: decodedToken.uid,
-                studentUid: studentUid ?? null
+                uid: decodedToken.uid
             }
         };
         
-        console.log('✅ Policy generated successfully with studentUid:', studentUid);
+        console.log('✅ Policy generated successfully');
         return policy;
     } catch (error) {
         console.log(`❌ Error details: `, error);

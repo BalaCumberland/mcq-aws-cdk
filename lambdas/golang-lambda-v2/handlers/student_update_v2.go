@@ -24,12 +24,11 @@ func HandleStudentUpdateV2(request events.APIGatewayProxyRequest) (events.APIGat
 		return CreateErrorResponse(400, "Invalid JSON format"), nil
 	}
 
-	if updateRequest.Email == "" {
-		return CreateErrorResponse(400, "Missing 'email' parameter"), nil
+	if updateRequest.UID == "" {
+		return CreateErrorResponse(400, "Missing 'uid' parameter"), nil
 	}
 
-	email := strings.ToLower(updateRequest.Email)
-	log.Printf("📌 Updating student: %s", email)
+	log.Printf("📌 Updating student: %s", updateRequest.UID)
 
 	// Additional check for subscription updates - only super
 	isSubscriptionUpdate := updateRequest.Amount > 0
@@ -38,7 +37,7 @@ func HandleStudentUpdateV2(request events.APIGatewayProxyRequest) (events.APIGat
 	}
 
 	// Get existing student
-	student, err := GetStudentInfoByEmail(email)
+	student, err := GetStudentInfoByUID(updateRequest.UID)
 	if err != nil {
 		log.Printf("❌ Error fetching student: %v", err)
 		return CreateErrorResponse(500, "Internal Server Error"), nil

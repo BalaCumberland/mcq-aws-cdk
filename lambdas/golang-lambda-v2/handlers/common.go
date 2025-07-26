@@ -38,7 +38,8 @@ type Question struct {
 }
 
 type StudentUpdateRequest struct {
-	Email        string  `json:"email"`
+	UID          string  `json:"uid"`
+	Email        string  `json:"email,omitempty"`
 	PhoneNumber  string  `json:"phoneNumber,omitempty"`
 	Name         string  `json:"name,omitempty"`
 	StudentClass string  `json:"studentClass,omitempty"`
