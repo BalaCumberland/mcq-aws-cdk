@@ -11,7 +11,6 @@ import (
 )
 
 type ProgressSummary struct {
-	ClassName    string  `json:"className"`
 	SubjectName  string  `json:"subjectName"`
 	Percentage   float64 `json:"percentage"`
 	Attempted    int     `json:"attempted"`
@@ -20,7 +19,6 @@ type ProgressSummary struct {
 
 type TestScore struct {
 	QuizName       string  `json:"quizName"`
-	ClassName      string  `json:"className"`
 	SubjectName    string  `json:"subjectName"`
 	Topic          string  `json:"topic"`
 	CorrectCount   int     `json:"correctCount"`
@@ -35,6 +33,7 @@ type TestScore struct {
 
 type ProgressResponse struct {
 	Email           string                       `json:"email"`
+	ClassName       string                       `json:"className"`
 	SubjectSummary  []ProgressSummary            `json:"subjectSummary"`
 	IndividualTests map[string][]TestScore       `json:"individualTests"`
 }
@@ -150,7 +149,6 @@ func HandleStudentProgressV2(request events.APIGatewayProxyRequest) (events.APIG
 		// Add to individual tests
 		test := TestScore{
 			QuizName:      quizName,
-			ClassName:     className,
 			SubjectName:   subjectName,
 			Topic:         topic,
 			CorrectCount:  correctCount,
@@ -185,6 +183,9 @@ func HandleStudentProgressV2(request events.APIGatewayProxyRequest) (events.APIG
 
 		attempted := len(attemptedQuizzes[subject])
 		unattempted := totalQuizzes - attempted
+		if unattempted < 0 {
+			unattempted = 0
+		}
 		
 		// Calculate average percentage and round to 1 decimal
 		var avgPercentage float64
@@ -194,7 +195,6 @@ func HandleStudentProgressV2(request events.APIGatewayProxyRequest) (events.APIG
 		}
 
 		subjectSummary = append(subjectSummary, ProgressSummary{
-			ClassName:    student.StudentClass,
 			SubjectName:  subject,
 			Percentage:   avgPercentage,
 			Attempted:    attempted,
@@ -204,6 +204,7 @@ func HandleStudentProgressV2(request events.APIGatewayProxyRequest) (events.APIG
 
 	response := ProgressResponse{
 		Email:           email,
+		ClassName:       student.StudentClass,
 		SubjectSummary:  subjectSummary,
 		IndividualTests: individualTests,
 	}
