@@ -184,8 +184,8 @@ func ConnectDB() (*sql.DB, error) {
 func GetCORSHeaders() map[string]string {
 	return map[string]string{
 		"Access-Control-Allow-Origin":  "*",
-		"Access-Control-Allow-Methods": "OPTIONS, POST, PUT",
-		"Access-Control-Allow-Headers": "Content-Type, Authorization",
+		"Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+		"Access-Control-Allow-Headers": "Content-Type, Authorization, sec-ch-ua, sec-ch-ua-mobile, sec-ch-ua-platform, User-Agent, Referer",
 	}
 }
 

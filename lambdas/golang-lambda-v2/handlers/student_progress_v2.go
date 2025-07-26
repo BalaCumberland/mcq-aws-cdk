@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"log"
 	"strconv"
-	"strings"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-sdk-go/aws"
