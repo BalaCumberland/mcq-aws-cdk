@@ -3,7 +3,6 @@ package handlers
 import (
 	"encoding/json"
 	"log"
-	"strings"
 	"time"
 
 	"github.com/aws/aws-lambda-go/events"
