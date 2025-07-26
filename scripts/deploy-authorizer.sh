@@ -1,10 +1,36 @@
 #!/bin/bash
-cd lambdas/authorizer-lambda
+set -e
+
+echo "🚀 Deploying Firebase Authorizer..."
+
+# Navigate to authorizer directory
+cd "$(dirname "$0")/../lambdas/authorizer-lambda"
+
+# Install dependencies if node_modules doesn't exist
+if [ ! -d "node_modules" ]; then
+    echo "📦 Installing dependencies..."
+    npm install
+fi
+
+# Create deployment package
+echo "📦 Creating deployment package..."
+rm -rf deployment function.zip
 mkdir deployment
+cp index.js package.json deployment/
+cp -r node_modules deployment/
+
+# Create zip file
 cd deployment
-cp -r ../index.js ../package.json ../package-lock.json ../node_modules ./
-zip -r ../function.zip ./*
+zip -r ../function.zip . > /dev/null
 cd ..
-aws lambda update-function-code --function-name firebase-authorizer --zip-file fileb://function.zip
+
+# Deploy to AWS Lambda
+echo "☁️ Updating Lambda function..."
+aws lambda update-function-code \
+    --function-name firebase-authorizer \
+    --zip-file fileb://function.zip
+
+# Cleanup
 rm -rf deployment
-echo "Authorizer deployed successfully!"
+
+echo "✅ Authorizer deployed successfully!"
