@@ -3,14 +3,13 @@ package handlers
 import (
 	"encoding/json"
 	"log"
-	"strings"
 
 	"github.com/aws/aws-lambda-go/events"
 )
 
 func HandleQuizGetByNameV2(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	// Get email from auth context
-	email, err := GetUserFromContext(request)
+	// Get UID from auth context
+	userUID, err := GetUserUIDFromContext(request)
 	if err != nil {
 		return CreateErrorResponse(401, "Unauthorized"), nil
 	}
@@ -33,11 +32,10 @@ func HandleQuizGetByNameV2(request events.APIGatewayProxyRequest) (events.APIGat
 		return CreateErrorResponse(400, "Missing 'topic' parameter"), nil
 	}
 
-	email = strings.ToLower(email)
-	log.Printf("📌 Fetching quiz questions for: %s (%s-%s-%s), Email: %s", quizName, className, subjectName, topic, email)
+	log.Printf("📌 Fetching quiz questions for: %s (%s-%s-%s), UID: %s", quizName, className, subjectName, topic, userUID)
 
 	// Check student exists and is paid
-	student, err := GetStudentFromDynamoDB(email)
+	student, err := GetStudentInfoByUID(userUID)
 	if err != nil {
 		log.Printf("❌ Error fetching student: %v", err)
 		return CreateErrorResponse(500, "Internal Server Error"), nil
