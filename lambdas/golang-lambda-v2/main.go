@@ -41,6 +41,8 @@ func lambdaHandler(request events.APIGatewayProxyRequest) (events.APIGatewayProx
 		return handlers.HandleQuizSubmitV2(request)
 	case "/v2/quiz/delete":
 		return handlers.HandleQuizDeleteV2(request)
+	case "/v2/quiz/list":
+		return handlers.HandleQuizListV2(request)
 	case "/v2/students/progress":
 		return handlers.HandleStudentProgressV2(request)
 	case "/v2/quiz/result":

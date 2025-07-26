@@ -18,17 +18,34 @@ func HandleQuizDeleteV2(request events.APIGatewayProxyRequest) (events.APIGatewa
 	}
 	
 	quizName := request.QueryStringParameters["quizName"]
+	className := request.QueryStringParameters["className"]
+	subjectName := request.QueryStringParameters["subjectName"]
+	topic := request.QueryStringParameters["topic"]
+	
 	if quizName == "" {
 		return CreateErrorResponse(400, "Missing 'quizName' parameter"), nil
 	}
+	if className == "" {
+		return CreateErrorResponse(400, "Missing 'className' parameter"), nil
+	}
+	if subjectName == "" {
+		return CreateErrorResponse(400, "Missing 'subjectName' parameter"), nil
+	}
+	if topic == "" {
+		return CreateErrorResponse(400, "Missing 'topic' parameter"), nil
+	}
 
-	log.Printf("📌 Deleting quiz: %s", quizName)
+	log.Printf("📌 Deleting quiz: %s (%s-%s-%s)", quizName, className, subjectName, topic)
 
-	// Check if quiz exists first
-	getResult, err := dynamoClient.GetItem(&dynamodb.GetItemInput{
-		TableName: aws.String("quiz_questions"),
-		Key: map[string]*dynamodb.AttributeValue{
-			"quiz_name": {S: aws.String(quizName)},
+	// Check if quiz exists with all filters
+	getResult, err := dynamoClient.Scan(&dynamodb.ScanInput{
+		TableName:        aws.String("quiz_questions"),
+		FilterExpression: aws.String("quiz_name = :quizName AND class_name = :className AND subject_name = :subjectName AND topic = :topic"),
+		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
+			":quizName":    {S: aws.String(quizName)},
+			":className":   {S: aws.String(className)},
+			":subjectName": {S: aws.String(subjectName)},
+			":topic":       {S: aws.String(topic)},
 		},
 	})
 
@@ -37,7 +54,7 @@ func HandleQuizDeleteV2(request events.APIGatewayProxyRequest) (events.APIGatewa
 		return CreateErrorResponse(500, "Internal Server Error"), nil
 	}
 
-	if getResult.Item == nil {
+	if len(getResult.Items) == 0 {
 		return CreateErrorResponse(404, "Quiz not found"), nil
 	}
 
