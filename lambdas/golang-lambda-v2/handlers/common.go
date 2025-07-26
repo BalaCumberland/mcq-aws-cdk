@@ -7,7 +7,6 @@ import (
 	"log"
 	"os"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/aws/aws-lambda-go/events"
@@ -103,14 +102,28 @@ func GetUserFromContext(request events.APIGatewayProxyRequest) (string, error) {
 	return email, nil
 }
 
+func GetUserUIDFromContext(request events.APIGatewayProxyRequest) (string, error) {
+	if request.RequestContext.Authorizer == nil {
+		return "", fmt.Errorf("no authorizer context")
+	}
+	// Try uid first, then fall back to user_id
+	if uid, ok := request.RequestContext.Authorizer["uid"].(string); ok && uid != "" {
+		return uid, nil
+	}
+	if userID, ok := request.RequestContext.Authorizer["user_id"].(string); ok && userID != "" {
+		return userID, nil
+	}
+	return "", fmt.Errorf("missing user UID from authorizer")
+}
+
 // CheckAdminRole verifies if user has admin or super role
 func CheckAdminRole(request events.APIGatewayProxyRequest) (string, error) {
-	userEmail, err := GetUserFromContext(request)
+	userUID, err := GetUserUIDFromContext(request)
 	if err != nil {
 		return "", err
 	}
 
-	userStudent, _ := GetStudentFromDynamoDB(strings.ToLower(userEmail))
+	userStudent, _ := GetStudentInfoByUID(userUID)
 	userRole := "student"
 	if userStudent != nil && userStudent.Role != nil {
 		if roleStr, ok := userStudent.Role.(string); ok {

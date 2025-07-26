@@ -3,7 +3,6 @@ package handlers
 import (
 	"encoding/json"
 	"log"
-	"strings"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-sdk-go/aws"
@@ -11,8 +10,8 @@ import (
 )
 
 func HandleUnattemptedQuizzesV2(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	// Get email from auth context
-	email, err := GetUserFromContext(request)
+	// Get UID from auth context
+	uid, err := GetUserUIDFromContext(request)
 	if err != nil {
 		return CreateErrorResponse(401, "Unauthorized"), nil
 	}
@@ -28,8 +27,7 @@ func HandleUnattemptedQuizzesV2(request events.APIGatewayProxyRequest) (events.A
 		return CreateErrorResponse(400, "Missing 'subjectName' parameter"), nil
 	}
 
-	email = strings.ToLower(email)
-	log.Printf("📌 Fetching unattempted quizzes for: %s, Class: %s, Subject: %s, Topic: %s", email, className, subjectName, topic)
+	log.Printf("📌 Fetching unattempted quizzes for: %s, Class: %s, Subject: %s, Topic: %s", uid, className, subjectName, topic)
 
 	// Build filter expression based on parameters
 	var filterExpression string
@@ -66,10 +64,10 @@ func HandleUnattemptedQuizzesV2(request events.APIGatewayProxyRequest) (events.A
 
 	// Get attempted quizzes for student
 	attemptResult, err := dynamoClient.Query(&dynamodb.QueryInput{
-		TableName: aws.String("student_quiz_attempts"),
-		KeyConditionExpression: aws.String("email = :email"),
+		TableName: aws.String("student_quiz_attempts_v2"),
+		KeyConditionExpression: aws.String("uid = :uid"),
 		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
-			":email": {S: aws.String(email)},
+			":uid": {S: aws.String(uid)},
 		},
 	})
 

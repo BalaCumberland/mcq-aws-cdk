@@ -3,7 +3,6 @@ package handlers
 import (
 	"encoding/json"
 	"log"
-	"strings"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-sdk-go/aws"
@@ -15,10 +14,10 @@ type ClassUpgradeRequest struct {
 }
 
 func HandleStudentClassUpgradeV2(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	// Get authenticated user email
-	userEmail, err := GetUserFromContext(request)
+	// Get authenticated user UID
+	userUID, err := GetUserUIDFromContext(request)
 	if err != nil {
-		log.Printf("❌ Failed to get user from context: %v", err)
+		log.Printf("❌ Failed to get user UID from context: %v", err)
 		return CreateErrorResponse(401, "Unauthorized"), nil
 	}
 
@@ -33,11 +32,10 @@ func HandleStudentClassUpgradeV2(request events.APIGatewayProxyRequest) (events.
 		return CreateErrorResponse(400, "Missing 'newClass' parameter"), nil
 	}
 
-	email := strings.ToLower(userEmail)
-	log.Printf("📌 Upgrading class for student: %s to %s", email, upgradeRequest.NewClass)
+	log.Printf("📌 Upgrading class for student: %s to %s", userUID, upgradeRequest.NewClass)
 
 	// Get existing student
-	student, err := GetStudentFromDynamoDB(email)
+	student, err := GetStudentInfoByUID(userUID)
 	if err != nil {
 		log.Printf("❌ Error fetching student: %v", err)
 		return CreateErrorResponse(500, "Internal Server Error"), nil
@@ -56,12 +54,12 @@ func HandleStudentClassUpgradeV2(request events.APIGatewayProxyRequest) (events.
 	}
 
 	// Delete all quiz attempts for this student
-	log.Printf("🗑️ Deleting all quiz attempts for student: %s", email)
+	log.Printf("🗑️ Deleting all quiz attempts for student: %s", userUID)
 	queryResult, err := dynamoClient.Query(&dynamodb.QueryInput{
-		TableName: aws.String("student_quiz_attempts"),
-		KeyConditionExpression: aws.String("email = :email"),
+		TableName: aws.String("student_quiz_attempts_v2"),
+		KeyConditionExpression: aws.String("uid = :uid"),
 		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
-			":email": {S: aws.String(email)},
+			":uid": {S: aws.String(userUID)},
 		},
 	})
 
@@ -69,9 +67,9 @@ func HandleStudentClassUpgradeV2(request events.APIGatewayProxyRequest) (events.
 		for _, item := range queryResult.Items {
 			if quizName := item["quiz_name"]; quizName != nil && quizName.S != nil {
 				_, _ = dynamoClient.DeleteItem(&dynamodb.DeleteItemInput{
-					TableName: aws.String("student_quiz_attempts"),
+					TableName: aws.String("student_quiz_attempts_v2"),
 					Key: map[string]*dynamodb.AttributeValue{
-						"email": {S: aws.String(email)},
+						"uid": {S: aws.String(userUID)},
 						"quiz_name": {S: quizName.S},
 					},
 				})
@@ -83,7 +81,7 @@ func HandleStudentClassUpgradeV2(request events.APIGatewayProxyRequest) (events.
 	student.StudentClass = newClass
 
 	// Save updated student
-	err = SaveStudentToDynamoDB(*student)
+	err = SaveStudentInfoToDynamoDB(*student)
 	if err != nil {
 		log.Printf("❌ Error updating student: %v", err)
 		return CreateErrorResponse(500, "Internal Server Error"), nil
@@ -91,7 +89,7 @@ func HandleStudentClassUpgradeV2(request events.APIGatewayProxyRequest) (events.
 
 	response := map[string]interface{}{
 		"message":     "Class upgraded successfully",
-		"email":       email,
+		"uid":         student.UID,
 		"oldClass":    currentClass,
 		"newClass":    newClass,
 	}

@@ -73,7 +73,7 @@ func HandleQuizDeleteV2(request events.APIGatewayProxyRequest) (events.APIGatewa
 
 	// Delete all attempt records for this specific quiz (matching all filters)
 	scanResult, scanErr := dynamoClient.Scan(&dynamodb.ScanInput{
-		TableName: aws.String("student_quiz_attempts"),
+		TableName: aws.String("student_quiz_attempts_v2"),
 		FilterExpression: aws.String("quiz_name = :quiz_name AND class_name = :className AND category = :subjectName"),
 		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
 			":quiz_name":    {S: aws.String(quizName)},
@@ -86,7 +86,7 @@ func HandleQuizDeleteV2(request events.APIGatewayProxyRequest) (events.APIGatewa
 		for _, item := range scanResult.Items {
 			if email := item["email"]; email != nil && email.S != nil {
 				_, _ = dynamoClient.DeleteItem(&dynamodb.DeleteItemInput{
-					TableName: aws.String("student_quiz_attempts"),
+					TableName: aws.String("student_quiz_attempts_v2"),
 					Key: map[string]*dynamodb.AttributeValue{
 						"email": {S: email.S},
 						"quiz_name": {S: aws.String(quizName)},

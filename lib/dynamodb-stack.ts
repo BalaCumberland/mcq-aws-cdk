@@ -45,8 +45,8 @@ export class DynamoDbStack extends cdk.Stack {
 
     // Student Quiz Attempts Table
     this.attemptsTable = new dynamodb.Table(this, 'AttemptsTable', {
-      tableName: 'student_quiz_attempts',
-      partitionKey: { name: 'email', type: dynamodb.AttributeType.STRING },
+      tableName: 'student_quiz_attempts_v2',
+      partitionKey: { name: 'uid', type: dynamodb.AttributeType.STRING },
       sortKey: { name: 'quiz_name', type: dynamodb.AttributeType.STRING },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
       removalPolicy: cdk.RemovalPolicy.RETAIN
@@ -54,8 +54,8 @@ export class DynamoDbStack extends cdk.Stack {
 
     // Student Quizzes Table
     this.studentQuizzesTable = new dynamodb.Table(this, 'StudentQuizzesTable', {
-      tableName: 'student_quizzes',
-      partitionKey: { name: 'email', type: dynamodb.AttributeType.STRING },
+      tableName: 'student_quizzes_v2',
+      partitionKey: { name: 'uid', type: dynamodb.AttributeType.STRING },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
       removalPolicy: cdk.RemovalPolicy.RETAIN
     });

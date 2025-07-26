@@ -3,7 +3,6 @@ package handlers
 import (
 	"encoding/json"
 	"log"
-	"strings"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-sdk-go/aws"
@@ -12,8 +11,8 @@ import (
 )
 
 func HandleQuizResultV2(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	// Get email from Firebase auth context
-	email, err := GetUserFromContext(request)
+	// Get UID from Firebase auth context
+	uid, err := GetUserUIDFromContext(request)
 	if err != nil {
 		return CreateErrorResponse(401, "Unauthorized"), nil
 	}
@@ -36,14 +35,13 @@ func HandleQuizResultV2(request events.APIGatewayProxyRequest) (events.APIGatewa
 		return CreateErrorResponse(400, "Missing 'topic' parameter"), nil
 	}
 
-	email = strings.ToLower(email)
-	log.Printf("📌 Fetching result for: %s, Quiz: %s (%s-%s-%s)", email, quizName, className, subjectName, topic)
+	log.Printf("📌 Fetching result for: %s, Quiz: %s (%s-%s-%s)", uid, quizName, className, subjectName, topic)
 
 	// Get quiz attempt using simple key lookup
 	result, err := dynamoClient.GetItem(&dynamodb.GetItemInput{
-		TableName: aws.String("student_quiz_attempts"),
+		TableName: aws.String("student_quiz_attempts_v2"),
 		Key: map[string]*dynamodb.AttributeValue{
-			"email":     {S: aws.String(email)},
+			"uid":       {S: aws.String(uid)},
 			"quiz_name": {S: aws.String(quizName)},
 		},
 	})

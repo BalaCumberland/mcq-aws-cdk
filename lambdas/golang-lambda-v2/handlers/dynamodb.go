@@ -56,9 +56,23 @@ type StudentItem struct {
 	Role         interface{} `json:"role,omitempty" dynamodbav:"role,omitempty"`
 }
 
+// Student info item structure
+type StudentInfoItem struct {
+	UID          string      `json:"uid" dynamodbav:"uid"`
+	Email        string      `json:"email" dynamodbav:"email"`
+	Name         string      `json:"name" dynamodbav:"name"`
+	StudentClass string      `json:"student_class" dynamodbav:"student_class"`
+	PhoneNumber  string      `json:"phone_number" dynamodbav:"phone_number"`
+	SubExpDate   interface{} `json:"sub_exp_date,omitempty" dynamodbav:"sub_exp_date,omitempty"`
+	UpdatedBy    interface{} `json:"updated_by,omitempty" dynamodbav:"updated_by,omitempty"`
+	Amount       interface{} `json:"amount,omitempty" dynamodbav:"amount,omitempty"`
+	PaymentTime  interface{} `json:"payment_time,omitempty" dynamodbav:"payment_time,omitempty"`
+	Role         interface{} `json:"role,omitempty" dynamodbav:"role,omitempty"`
+}
+
 // Quiz attempt item structure
 type AttemptItem struct {
-	Email         string           `json:"email" dynamodbav:"email"`
+	UID           string           `json:"uid" dynamodbav:"uid"`
 	QuizName      string           `json:"quiz_name" dynamodbav:"quiz_name"`
 	ClassName     string           `json:"class_name" dynamodbav:"class_name"`
 	Category      string           `json:"category" dynamodbav:"category"`
@@ -167,7 +181,7 @@ func SaveAttemptToDynamoDB(attempt AttemptItem) error {
 	}
 
 	_, err = dynamoClient.PutItem(&dynamodb.PutItemInput{
-		TableName: aws.String("student_quiz_attempts"),
+		TableName: aws.String("student_quiz_attempts_v2"),
 		Item:      av,
 	})
 
@@ -431,4 +445,65 @@ func FetchTopics(className, subjectName string) ([]string, error) {
 	}
 
 	return item.Topics, nil
+}
+
+// Get student info by UID
+func GetStudentInfoByUID(uid string) (*StudentInfoItem, error) {
+	result, err := dynamoClient.GetItem(&dynamodb.GetItemInput{
+		TableName: aws.String("students_info"),
+		Key: map[string]*dynamodb.AttributeValue{
+			"uid": {S: aws.String(uid)},
+		},
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	if result.Item == nil {
+		return nil, nil
+	}
+
+	var student StudentInfoItem
+	err = dynamodbattribute.UnmarshalMap(result.Item, &student)
+	return &student, err
+}
+
+// Get student info by email using GSI
+func GetStudentInfoByEmail(email string) (*StudentInfoItem, error) {
+	result, err := dynamoClient.Query(&dynamodb.QueryInput{
+		TableName:              aws.String("students_info"),
+		IndexName:              aws.String("email-index"),
+		KeyConditionExpression: aws.String("email = :email"),
+		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
+			":email": {S: aws.String(email)},
+		},
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	if len(result.Items) == 0 {
+		return nil, nil
+	}
+
+	var student StudentInfoItem
+	err = dynamodbattribute.UnmarshalMap(result.Items[0], &student)
+	return &student, err
+}
+
+// Save student info to DynamoDB
+func SaveStudentInfoToDynamoDB(student StudentInfoItem) error {
+	av, err := dynamodbattribute.MarshalMap(student)
+	if err != nil {
+		return err
+	}
+
+	_, err = dynamoClient.PutItem(&dynamodb.PutItemInput{
+		TableName: aws.String("students_info"),
+		Item:      av,
+	})
+
+	return err
 }

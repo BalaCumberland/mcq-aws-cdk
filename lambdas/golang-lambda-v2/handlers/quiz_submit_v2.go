@@ -171,18 +171,17 @@ func HandleQuizSubmitV2(request events.APIGatewayProxyRequest) (events.APIGatewa
 	totalCount := len(quiz.Questions)
 	percentage := float64(correctCount) / float64(totalCount) * 100
 
-	// Get user email from context
-	email, err := GetUserFromContext(request)
+	// Get user UID from context
+	uid, err := GetUserUIDFromContext(request)
 	if err != nil {
 		return CreateErrorResponse(401, "Unauthorized"), nil
 	}
-	email = strings.ToLower(email)
 
 	// Get existing attempt to increment attempt number
 	existingResult, _ := dynamoClient.GetItem(&dynamodb.GetItemInput{
-		TableName: aws.String("student_quiz_attempts"),
+		TableName: aws.String("student_quiz_attempts_v2"),
 		Key: map[string]*dynamodb.AttributeValue{
-			"email":     {S: aws.String(email)},
+			"uid":       {S: aws.String(uid)},
 			"quiz_name": {S: aws.String(quizName)},
 		},
 	})
@@ -191,9 +190,9 @@ func HandleQuizSubmitV2(request events.APIGatewayProxyRequest) (events.APIGatewa
 	if existingResult.Item != nil {
 		// Delete existing record first
 		_, _ = dynamoClient.DeleteItem(&dynamodb.DeleteItemInput{
-			TableName: aws.String("student_quiz_attempts"),
+			TableName: aws.String("student_quiz_attempts_v2"),
 			Key: map[string]*dynamodb.AttributeValue{
-				"email":     {S: aws.String(email)},
+				"uid":       {S: aws.String(uid)},
 				"quiz_name": {S: aws.String(quizName)},
 			},
 		})
@@ -208,7 +207,7 @@ func HandleQuizSubmitV2(request events.APIGatewayProxyRequest) (events.APIGatewa
 
 	// Save new attempt with incremented count
 	attempt := AttemptItem{
-		Email:         email,
+		UID:           uid,
 		QuizName:      quizName,
 		ClassName:     quiz.ClassName,
 		Category:      quiz.SubjectName,

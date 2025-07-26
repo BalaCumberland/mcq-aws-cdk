@@ -38,7 +38,7 @@ func HandleStudentUpdateV2(request events.APIGatewayProxyRequest) (events.APIGat
 	}
 
 	// Get existing student
-	student, err := GetStudentFromDynamoDB(email)
+	student, err := GetStudentInfoByEmail(email)
 	if err != nil {
 		log.Printf("❌ Error fetching student: %v", err)
 		return CreateErrorResponse(500, "Internal Server Error"), nil
@@ -91,7 +91,7 @@ func HandleStudentUpdateV2(request events.APIGatewayProxyRequest) (events.APIGat
 	}
 
 	// Save updated student
-	err = SaveStudentToDynamoDB(*student)
+	err = SaveStudentInfoToDynamoDB(*student)
 	if err != nil {
 		log.Printf("❌ Error updating student: %v", err)
 		return CreateErrorResponse(500, "Internal Server Error"), nil

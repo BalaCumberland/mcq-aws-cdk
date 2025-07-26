@@ -9,32 +9,38 @@ import (
 	"github.com/aws/aws-lambda-go/events"
 )
 
-func HandleStudentGetByEmailV2(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	// Get email from authenticated user context
-	userEmail, err := GetUserFromContext(request)
+func HandleStudentGetProfile(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+	// Debug: log the entire authorizer context
+	log.Printf("🔍 Authorizer context: %+v", request.RequestContext.Authorizer)
+
+	// Get UID from authenticated user context
+	userUID, err := GetUserUIDFromContext(request)
 	if err != nil {
-		log.Printf("❌ Failed to get user from context: %v", err)
+		log.Printf("❌ Failed to get user UID from context: %v", err)
 		return CreateErrorResponse(401, "Unauthorized"), nil
 	}
 
-	email := strings.ToLower(userEmail)
-	log.Printf("📌 Fetching student: %s", email)
+	log.Printf("📌 Fetching student: %s", userUID)
 
-	student, err := GetStudentFromDynamoDB(email)
+	student, err := GetStudentInfoByUID(userUID)
 	if err != nil {
 		log.Printf("❌ Error fetching student: %v", err)
 		return CreateErrorResponse(500, "Internal Server Error"), nil
 	}
 
 	if student == nil {
+		log.Printf("❌ Student not found for UID: %s", userUID)
 		return CreateErrorResponse(404, "Student not found"), nil
 	}
 
-	// Format response exactly like v1
+	log.Printf("✅ Student found: %+v", student)
+
+	// Format response
 	studentData := map[string]interface{}{
-		"id":            1, // Default ID since DynamoDB doesn't have auto-increment
-		"email":         student.Email,
-		"name":          student.Name,
+		"id":             1, // Default ID since DynamoDB doesn't have auto-increment
+		"email":          student.Email,
+		"uid":            student.UID,
+		"name":           student.Name,
 		"student_class":  student.StudentClass,
 		"phone_number":   student.PhoneNumber,
 		"sub_exp_date":   nil,

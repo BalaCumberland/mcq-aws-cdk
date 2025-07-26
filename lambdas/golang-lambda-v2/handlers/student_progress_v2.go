@@ -32,20 +32,20 @@ type TestScore struct {
 }
 
 type ProgressResponse struct {
-	Email           string                       `json:"email"`
+	UID             string                       `json:"uid"`
 	ClassName       string                       `json:"className"`
 	SubjectSummary  []ProgressSummary            `json:"subjectSummary"`
 	IndividualTests map[string][]TestScore       `json:"individualTests"`
 }
 
 func HandleStudentProgressV2(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	email, err := GetUserFromContext(request)
+	uid, err := GetUserUIDFromContext(request)
 	if err != nil {
 		return CreateErrorResponse(401, "Unauthorized"), nil
 	}
 
 	// Get student's enrolled subjects
-	student, err := GetStudentFromDynamoDB(email)
+	student, err := GetStudentInfoByUID(uid)
 	if err != nil || student == nil {
 		log.Printf("❌ Student not found: %v", err)
 		return CreateErrorResponse(404, "Student not found"), nil
@@ -60,10 +60,10 @@ func HandleStudentProgressV2(request events.APIGatewayProxyRequest) (events.APIG
 
 	// Get all attempts for student
 	result, err := dynamoClient.Query(&dynamodb.QueryInput{
-		TableName: aws.String("student_quiz_attempts"),
-		KeyConditionExpression: aws.String("email = :email"),
+		TableName: aws.String("student_quiz_attempts_v2"),
+		KeyConditionExpression: aws.String("uid = :uid"),
 		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
-			":email": {S: aws.String(email)},
+			":uid": {S: aws.String(uid)},
 		},
 	})
 
@@ -203,7 +203,7 @@ func HandleStudentProgressV2(request events.APIGatewayProxyRequest) (events.APIG
 	}
 
 	response := ProgressResponse{
-		Email:           email,
+		UID:             uid,
 		ClassName:       student.StudentClass,
 		SubjectSummary:  subjectSummary,
 		IndividualTests: individualTests,

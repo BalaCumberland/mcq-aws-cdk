@@ -2,8 +2,10 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"strings"
+	"time"
 
 	"github.com/aws/aws-lambda-go/events"
 )
@@ -26,16 +28,10 @@ func HandleStudentRegisterV2(request events.APIGatewayProxyRequest) (events.APIG
 		studentClass = "DEMO"
 	}
 
-	// Create student item for DynamoDB
-	student := StudentItem{
-		Email:        normalizedEmail,
-		Name:         studentRegister.Name,
-		PhoneNumber:  studentRegister.PhoneNumber,
-		StudentClass: studentClass,
-	}
+
 
 	// Check if student already exists
-	existingStudent, err := GetStudentFromDynamoDB(normalizedEmail)
+	existingStudent, err := GetStudentInfoByEmail(normalizedEmail)
 	if err != nil {
 		log.Printf("❌ Error checking existing student: %v", err)
 		return CreateErrorResponse(500, "Internal Server Error"), nil
@@ -45,18 +41,28 @@ func HandleStudentRegisterV2(request events.APIGatewayProxyRequest) (events.APIG
 		return CreateErrorResponse(409, "Student already exists"), nil
 	}
 
+	// Generate UID for new student (temporary until Firebase creates user)
+	uid := fmt.Sprintf("temp_%d", time.Now().UnixNano())
+	studentInfo := StudentInfoItem{
+		UID:          uid,
+		Email:        normalizedEmail,
+		Name:         studentRegister.Name,
+		PhoneNumber:  studentRegister.PhoneNumber,
+		StudentClass: studentClass,
+	}
+
 	// Save new student
-	err = SaveStudentToDynamoDB(student)
+	err = SaveStudentInfoToDynamoDB(studentInfo)
 	if err != nil {
 		log.Printf("❌ Error saving student: %v", err)
 		return CreateErrorResponse(500, "Internal Server Error"), nil
 	}
 
 	studentData := map[string]interface{}{
-		"email":        student.Email,
-		"name":         student.Name,
-		"studentClass": student.StudentClass,
-		"phoneNumber":  student.PhoneNumber,
+		"uid":          studentInfo.UID,
+		"name":         studentInfo.Name,
+		"studentClass": studentInfo.StudentClass,
+		"phoneNumber":  studentInfo.PhoneNumber,
 	}
 
 	response := map[string]interface{}{
