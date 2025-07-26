@@ -5,6 +5,7 @@ import { Construct } from 'constructs';
 export class DynamoDbStack extends cdk.Stack {
   public readonly quizTable: dynamodb.Table;
   public readonly studentTable: dynamodb.Table;
+  public readonly studentInfoTable: dynamodb.Table;
   public readonly attemptsTable: dynamodb.Table;
   public readonly studentQuizzesTable: dynamodb.Table;
   public readonly classSubjectsTable: dynamodb.Table;
@@ -26,6 +27,20 @@ export class DynamoDbStack extends cdk.Stack {
       partitionKey: { name: 'email', type: dynamodb.AttributeType.STRING },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
       removalPolicy: cdk.RemovalPolicy.RETAIN
+    });
+
+    // Students Info Table (with Firebase UID)
+    this.studentInfoTable = new dynamodb.Table(this, 'StudentInfoTable', {
+      tableName: 'students_info',
+      partitionKey: { name: 'uid', type: dynamodb.AttributeType.STRING },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      removalPolicy: cdk.RemovalPolicy.RETAIN
+    });
+
+    // Add GSI for email lookup
+    this.studentInfoTable.addGlobalSecondaryIndex({
+      indexName: 'email-index',
+      partitionKey: { name: 'email', type: dynamodb.AttributeType.STRING }
     });
 
     // Student Quiz Attempts Table
