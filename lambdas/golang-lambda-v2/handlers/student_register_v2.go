@@ -2,10 +2,8 @@ package handlers
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
 	"strings"
-	"time"
 
 	"github.com/aws/aws-lambda-go/events"
 )
@@ -18,6 +16,9 @@ func HandleStudentRegisterV2(request events.APIGatewayProxyRequest) (events.APIG
 		return CreateErrorResponse(400, "Invalid JSON format"), nil
 	}
 
+	if studentRegister.UID == "" {
+		return CreateErrorResponse(400, "Missing required field: 'uid'"), nil
+	}
 	if studentRegister.Email == "" {
 		return CreateErrorResponse(400, "Missing required field: 'email'"), nil
 	}
@@ -30,8 +31,8 @@ func HandleStudentRegisterV2(request events.APIGatewayProxyRequest) (events.APIG
 
 
 
-	// Check if student already exists
-	existingStudent, err := GetStudentInfoByEmail(normalizedEmail)
+	// Check if student already exists by UID
+	existingStudent, err := GetStudentInfoByUID(studentRegister.UID)
 	if err != nil {
 		log.Printf("❌ Error checking existing student: %v", err)
 		return CreateErrorResponse(500, "Internal Server Error"), nil
@@ -40,11 +41,8 @@ func HandleStudentRegisterV2(request events.APIGatewayProxyRequest) (events.APIG
 	if existingStudent != nil {
 		return CreateErrorResponse(409, "Student already exists"), nil
 	}
-
-	// Generate UID for new student (temporary until Firebase creates user)
-	uid := fmt.Sprintf("temp_%d", time.Now().UnixNano())
 	studentInfo := StudentInfoItem{
-		UID:          uid,
+		UID:          studentRegister.UID,
 		Email:        normalizedEmail,
 		Name:         studentRegister.Name,
 		PhoneNumber:  studentRegister.PhoneNumber,
@@ -60,9 +58,10 @@ func HandleStudentRegisterV2(request events.APIGatewayProxyRequest) (events.APIG
 
 	studentData := map[string]interface{}{
 		"uid":          studentInfo.UID,
+		"email":        studentInfo.Email,
 		"name":         studentInfo.Name,
-		"studentClass": studentInfo.StudentClass,
 		"phoneNumber":  studentInfo.PhoneNumber,
+		"studentClass": studentInfo.StudentClass,
 	}
 
 	response := map[string]interface{}{

@@ -69,6 +69,7 @@ type QuestionResult struct {
 }
 
 type StudentRegisterRequest struct {
+	UID          string `json:"uid"`
 	Email        string `json:"email"`
 	Name         string `json:"name"`
 	PhoneNumber  string `json:"phoneNumber"`
